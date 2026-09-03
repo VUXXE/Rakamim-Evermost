@@ -4,3 +4,4 @@ bin/
 uploads/products/*
 !uploads/products/.gitkeep
 **/uploads/**
+coverage.out
