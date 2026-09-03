@@ -3,6 +3,7 @@ package http
 import (
 	"evermos-api/internal/helper"
 	"evermos-api/internal/infrastructure/container"
+	"evermos-api/internal/server/http/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -34,10 +35,39 @@ func SetupRoutes(cfg RouterConfig) {
 		})
 	})
 
+	if c == nil {
+		return
+	}
+
 	// Auth Endpoints (Public)
-	if c != nil && c.AuthHandler != nil {
+	if c.AuthHandler != nil {
 		auth := api.Group("/auth")
 		auth.Post("/register", c.AuthHandler.Register)
 		auth.Post("/login", c.AuthHandler.Login)
+	}
+
+	// User Endpoints
+	if c.UserHandler != nil {
+		users := api.Group("/users", middleware.JWTMiddleware())
+		users.Get("/me", c.UserHandler.GetMe)
+		users.Patch("/me", c.UserHandler.UpdateMe)
+		users.Delete("/me", c.UserHandler.DeleteMe)
+		users.Get("/", middleware.AdminOnlyMiddleware(), c.UserHandler.GetAllUsers)
+		users.Get("/:id", c.UserHandler.GetUserByID)
+	}
+
+	// Store Endpoints
+	if c.StoreHandler != nil {
+		stores := api.Group("/stores")
+
+		// Protected store routes
+		stores.Get("/me", middleware.JWTMiddleware(), c.StoreHandler.GetMyStore)
+		stores.Post("/", middleware.JWTMiddleware(), c.StoreHandler.CreateStore)
+		stores.Patch("/:id", middleware.JWTMiddleware(), c.StoreHandler.UpdateStore)
+		stores.Delete("/:id", middleware.JWTMiddleware(), c.StoreHandler.DeleteStore)
+
+		// Public store browsing routes
+		stores.Get("/", c.StoreHandler.GetAllStores)
+		stores.Get("/:id", c.StoreHandler.GetStoreByID)
 	}
 }

@@ -15,10 +15,14 @@ type Container struct {
 	StoreRepo repository.StoreRepository
 
 	// UseCases
-	AuthUseCase usecase.AuthUseCase
+	AuthUseCase  usecase.AuthUseCase
+	UserUseCase  usecase.UserUseCase
+	StoreUseCase usecase.StoreUseCase
 
 	// Handlers
-	AuthHandler *handler.AuthHandler
+	AuthHandler  *handler.AuthHandler
+	UserHandler  *handler.UserHandler
+	StoreHandler *handler.StoreHandler
 }
 
 func SetupContainer(db *gorm.DB) *Container {
@@ -28,15 +32,23 @@ func SetupContainer(db *gorm.DB) *Container {
 
 	// UseCases
 	authUseCase := usecase.NewAuthUseCase(db, userRepo, storeRepo)
+	userUseCase := usecase.NewUserUseCase(userRepo)
+	storeUseCase := usecase.NewStoreUseCase(storeRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authUseCase)
+	userHandler := handler.NewUserHandler(userUseCase)
+	storeHandler := handler.NewStoreHandler(storeUseCase)
 
 	return &Container{
-		DB:          db,
-		UserRepo:    userRepo,
-		StoreRepo:   storeRepo,
-		AuthUseCase: authUseCase,
-		AuthHandler: authHandler,
+		DB:           db,
+		UserRepo:     userRepo,
+		StoreRepo:    storeRepo,
+		AuthUseCase:  authUseCase,
+		UserUseCase:  userUseCase,
+		StoreUseCase: storeUseCase,
+		AuthHandler:  authHandler,
+		UserHandler:  userHandler,
+		StoreHandler: storeHandler,
 	}
 }
