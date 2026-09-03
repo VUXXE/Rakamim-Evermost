@@ -1,37 +1,44 @@
 {
 	"info": {
 		"_postman_id": "8f5a6b7c-3d2e-4f1a-9b8c-0e1f2a3b4c5d",
-		"name": "Evermos E-Commerce API",
-		"description": "Production Postman Collection for Evermos Multi-Tenant E-Commerce REST API",
+		"name": "Evermos E-Commerce RESTful API",
+		"description": "# Evermos Multi-Tenant E-Commerce RESTful API Platform\n\nSelamat datang di dokumentasi resmi **Evermos E-Commerce RESTful API**. Platform ini dibangun menggunakan **Go (Golang 1.25+)**, framework **Go Fiber v2**, **GORM**, dan basis data **MySQL 8.0** dengan mematuhi prinsip **Clean Architecture** (Robert C. Martin).\n\n---\n\n## 📌 Arsitektur & Prinsip Desain\n- **Clean Architecture:** Pembagian lapisan yang ketat antara *Delivery (HTTP Handlers)*, *UseCases (Business Logic)*, *Repositories (Database Abstraction)*, dan *Entities / DTOs*.\n- **Zero-Trust Multi-Tenancy:** Setiap data (pengguna, toko, alamat, produk, transaksi) terisolasi secara ketat. Pengguna reguler **TIDAK DAPAT** mengakses atau mengubah data milik pengguna/toko lain.\n- **ACID Transaction Engine:** Proses checkout pesanan menggunakan transaksi basis data atomik dengan *Pessimistic Row Locking* (`SELECT ... FOR UPDATE`) untuk mencegah *race condition* dan *overselling* stok.\n- **Immutable Audit Logs:** Tabel `product_logs` menyimpan snapshot harga dan kuantitas produk saat transaksi dibuat, sehingga perubahan harga produk di masa depan tidak mempengaruhi riwayat invoice.\n\n---\n\n## 🔑 Konfigurasi Variabel Lingkungan (Environment Variables)\nKoleksi ini menggunakan variabel berikut:\n- `{{base_url}}`: URL dasar API (Default: `http://localhost:8080/api/v1`)\n- `{{token}}`: JWT Bearer Token untuk pengguna/merchant yang sedang login.\n- `{{admin_token}}`: JWT Bearer Token untuk akun Administrator (`is_admin == true`).\n\n---\n\n## 🛡️ Autentikasi\nSemua endpoint terproteksi memerlukan header:\n```http\nAuthorization: Bearer {{token}}\n```",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
 		{
 			"key": "base_url",
 			"value": "http://localhost:8080/api/v1",
-			"type": "string"
+			"type": "string",
+			"description": "URL dasar API (default: http://localhost:8080/api/v1)"
 		},
 		{
 			"key": "token",
 			"value": "",
-			"type": "string"
+			"type": "string",
+			"description": "JWT Bearer Token untuk otentikasi pengguna/merchant reguler"
 		},
 		{
 			"key": "admin_token",
 			"value": "",
-			"type": "string"
+			"type": "string",
+			"description": "JWT Bearer Token khusus untuk akun Administrator (is_admin = true)"
 		}
 	],
 	"item": [
 		{
-			"name": "1. Authentication",
+			"name": "1. Autentikasi",
+			"description": "Modul layanan autentikasi pengguna, registrasi akun, pembuatan toko merchant otomatis, serta verifikasi login dengan kata sandi bcrypt dan penerbitan JWT Bearer Token.",
 			"item": [
 				{
-					"name": "Register User & Auto-Provision Store",
+					"name": "Registrasi Pengguna & Pembuatan Toko Otomatis",
 					"request": {
 						"method": "POST",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
 						"body": {
 							"mode": "raw",
@@ -39,17 +46,26 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/auth/register",
-							"host": ["{{base_url}}"],
-							"path": ["auth", "register"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "### 📝 Registrasi Pengguna & Pembuatan Toko Otomatis\n\nMendaftarkan akun pengguna baru ke platform. Endpoint ini menerapkan **Invarian Bisnis #1**:\n1. **Validasi Keunikan:** `email` dan `phone` wajib unik. Jika terjadi duplikasi, server mengembalikan respon `400 Bad Request`.\n2. **Enkripsi Kata Sandi:** Password otomatis di-hash menggunakan algoritma `bcrypt`.\n3. **Automated Store Provisioning:** Secara atomik dalam satu transaksi MySQL, sebuah toko merchant bernama `\"{UserName}'s Store\"` langsung dibuatkan untuk pengguna tersebut.\n4. **Respon:** Mengembalikan token JWT dan profil pengguna beserta toko yang baru terbuat."
 					}
 				},
 				{
-					"name": "Login User",
+					"name": "Login Pengguna",
 					"request": {
 						"method": "POST",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
 						"body": {
 							"mode": "raw",
@@ -57,289 +73,819 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/auth/login",
-							"host": ["{{base_url}}"],
-							"path": ["auth", "login"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "### 🔐 Login Pengguna\n\nMemverifikasi kredensial pengguna (`email` dan `password`).\n- Membandingkan hash bcrypt di basis data.\n- Jika kredensial valid, server mengembalikan data profil pengguna dan **JWT Bearer Token**.\n- Salin nilai `token` dari respon dan simpan di variabel koleksi `{{token}}` untuk mengakses endpoint terproteksi."
 					}
 				}
 			]
 		},
 		{
-			"name": "2. Users",
+			"name": "2. Manajemen Pengguna",
+			"description": "Modul pengelolaan profil pengguna terdaftar, pembaruan akun mandiri, penghapusan akun (soft delete), serta pengawasan seluruh akun oleh Administrator.",
 			"item": [
 				{
-					"name": "Get Authenticated Profile",
+					"name": "Lihat Profil Saya (Get My Profile)",
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
 						],
 						"url": {
 							"raw": "{{base_url}}/users/me",
-							"host": ["{{base_url}}"],
-							"path": ["users", "me"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						},
+						"description": "### 👤 Lihat Profil Pengguna yang Sedang Login\n\nMengambil informasi profil lengkap milik pengguna yang terotentikasi berdasarkan klaim `userID` di dalam token JWT.\n\n**Otorisasi:** Memerlukan token Bearer di header `Authorization`."
 					}
 				},
 				{
-					"name": "Update Profile",
+					"name": "Perbarui Profil Saya (Update Profile)",
 					"request": {
 						"method": "PATCH",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" },
-							{ "key": "Content-Type", "value": "application/json" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Budi Santoso Updated\"\n}"
+							"raw": "{\n  \"name\": \"Budi Santoso Updated\",\n  \"phone\": \"081299998888\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/users/me",
-							"host": ["{{base_url}}"],
-							"path": ["users", "me"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						},
+						"description": "### ✏️ Perbarui Profil Pengguna\n\nMemperbarui data akun pengguna yang sedang login. Mendukung pembaruan parsial:\n- `name`: Nama baru pengguna.\n- `phone`: Nomor telepon baru (dicek keunikannya).\n- `password`: Kata sandi baru (akan otomatis di-hash ulang menggunakan bcrypt)."
 					}
 				},
 				{
-					"name": "Delete Account",
+					"name": "Hapus Akun Saya (Delete Profile)",
 					"request": {
 						"method": "DELETE",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
 						],
 						"url": {
 							"raw": "{{base_url}}/users/me",
-							"host": ["{{base_url}}"],
-							"path": ["users", "me"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						},
+						"description": "### 🗑️ Hapus Akun Pengguna\n\nMelakukan penghapusan akun (*soft delete*) pada akun pengguna yang sedang login. Record di database akan memiliki timestamp `deleted_at` sehingga tidak dapat login kembali."
 					}
 				},
 				{
-					"name": "List Users (Admin Only)",
+					"name": "Daftar Semua Pengguna (Khusus Admin)",
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
 						],
 						"url": {
 							"raw": "{{base_url}}/users?limit=10&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["users"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							],
 							"query": [
-								{ "key": "limit", "value": "10" },
-								{ "key": "offset", "value": "0" }
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Jumlah data maksimal per halaman"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Index awal pengambilan data"
+								}
 							]
-						}
+						},
+						"description": "### 🛡️ Daftar Semua Pengguna (Admin Only)\n\nMenampilkan seluruh daftar pengguna terdaftar di platform.\n\n**Otorisasi RBAC:**\n- Hanya dapat diakses oleh akun berstatus Administrator (`is_admin == true`).\n- Pengguna reguler yang mencoba mengakses akan menerima respon `403 Forbidden`."
+					}
+				},
+				{
+					"name": "Lihat Pengguna berdasarkan ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "### 🔍 Detail Pengguna berdasarkan ID\n\nMenampilkan detail publik profil pengguna tertentu berdasarkan ID parameter."
 					}
 				}
 			]
 		},
 		{
-			"name": "3. Stores",
+			"name": "3. Manajemen Toko",
+			"description": "Modul pengelolaan toko merchant. Menerapkan isolasi multi-tenant yang ketat: setiap pengguna hanya dapat mengedit dan menghapus toko miliknya sendiri.",
 			"item": [
 				{
-					"name": "Get My Store",
+					"name": "Lihat Toko Saya (Get My Store)",
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
 						],
 						"url": {
 							"raw": "{{base_url}}/stores/me",
-							"host": ["{{base_url}}"],
-							"path": ["stores", "me"]
-						}
-					}
-				},
-				{
-					"name": "Update My Store",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" },
-							{ "key": "Content-Type", "value": "application/json" }
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Budi Toko Berkah\",\n  \"address\": \"Bandung\",\n  \"phone\": \"081234567890\"\n}"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"stores",
+								"me"
+							]
 						},
-						"url": {
-							"raw": "{{base_url}}/stores/1",
-							"host": ["{{base_url}}"],
-							"path": ["stores", "1"]
-						}
+						"description": "### 🏬 Lihat Profil Toko Saya\n\nMengambil informasi toko merchant milik pengguna yang sedang login berdasarkan token JWT."
 					}
 				},
 				{
-					"name": "List All Stores (Public)",
+					"name": "Daftar Semua Toko (Publik)",
 					"request": {
 						"method": "GET",
 						"url": {
 							"raw": "{{base_url}}/stores?limit=10&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["stores"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"stores"
+							],
 							"query": [
-								{ "key": "limit", "value": "10" },
-								{ "key": "offset", "value": "0" }
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Jumlah data per halaman"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Posisi offset pagination"
+								}
 							]
-						}
+						},
+						"description": "### 🌐 Daftar Semua Toko (Publik)\n\nMenampilkan daftar seluruh toko yang terdaftar di platform Evermos. Dapat diakses oleh publik tanpa otentikasi token."
+					}
+				},
+				{
+					"name": "Lihat Toko berdasarkan ID (Publik)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/stores/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"stores",
+								"1"
+							]
+						},
+						"description": "### 🔍 Detail Toko berdasarkan ID\n\nMenampilkan detail informasi toko tertentu berdasarkan ID. Endpoint publik tanpa otentikasi."
+					}
+				},
+				{
+					"name": "Perbarui Toko Saya (Update Store)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Toko Berkah Mandiri Sejahtera\",\n  \"address\": \"Jl. Asia Afrika No. 20, Bandung\",\n  \"phone\": \"081234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/stores/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"stores",
+								"1"
+							]
+						},
+						"description": "### ✏️ Perbarui Toko (Zero-Trust Isolation)\n\nMemperbarui nama, alamat, atau nomor telepon toko.\n\n**Aturan Bisnis & Keamanan Multi-Tenant:**\n- Sistem memverifikasi bahwa `stores.user_id == authenticated_user_id`.\n- Pengguna **TIDAK DAPAT** mengedit toko milik pengguna lain. Jika mencoba mengedit toko orang lain, sistem langsung mengembalikan status `403 Forbidden`."
+					}
+				},
+				{
+					"name": "Hapus Toko (Delete Store)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/stores/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"stores",
+								"1"
+							]
+						},
+						"description": "### 🗑️ Hapus Toko Milik Sendiri\n\nMenghapus toko merchant milik pengguna yang sedang login (*soft delete*). Akses terhadap toko orang lain akan ditolak dengan respon `403 Forbidden`."
 					}
 				}
 			]
 		},
 		{
-			"name": "4. Addresses",
+			"name": "4. Alamat Pengiriman",
+			"description": "Modul pengelolaan alamat pengiriman pembeli. Mengikuti standar hierarki kode dan nama wilayah administratif resmi di Indonesia (Provinsi, Kabupaten/Kota, Kecamatan, dan Kelurahan).",
 			"item": [
 				{
-					"name": "Create Address",
+					"name": "Tambah Alamat Baru",
 					"request": {
 						"method": "POST",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" },
-							{ "key": "Content-Type", "value": "application/json" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"judul_alamat\": \"Rumah Bandung\",\n  \"penerima_nama\": \"Budi Santoso\",\n  \"penerima_phone\": \"081234567890\",\n  \"provinsi\": \"Jawa Barat\",\n  \"provinsi_id\": \"32\",\n  \"kabupaten\": \"Bandung\",\n  \"kabupaten_id\": \"3273\",\n  \"kecamatan\": \"Coblong\",\n  \"kecamatan_id\": \"327301\",\n  \"kelurahan\": \"Dago\",\n  \"kelurahan_id\": \"3273011001\",\n  \"detail_alamat\": \"Jl. Dago No. 12\",\n  \"is_default\": true\n}"
+							"raw": "{\n  \"judul_alamat\": \"Rumah Utama Bandung\",\n  \"penerima_nama\": \"Budi Santoso\",\n  \"penerima_phone\": \"081234567890\",\n  \"provinsi\": \"Jawa Barat\",\n  \"provinsi_id\": \"32\",\n  \"kabupaten\": \"Bandung\",\n  \"kabupaten_id\": \"3273\",\n  \"kecamatan\": \"Coblong\",\n  \"kecamatan_id\": \"327301\",\n  \"kelurahan\": \"Dago\",\n  \"kelurahan_id\": \"3273011001\",\n  \"detail_alamat\": \"Jl. Ir. H. Juanda No. 102 RT 03 RW 05\",\n  \"is_default\": true\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/addresses",
-							"host": ["{{base_url}}"],
-							"path": ["addresses"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"addresses"
+							]
+						},
+						"description": "### 📍 Tambah Alamat Pengiriman Baru\n\nMenambahkan alamat pengiriman untuk akun pengguna yang sedang login.\n\n**Standar Administratif Indonesia:**\n- Mendukung data resmi wilayah: `provinsi`, `provinsi_id`, `kabupaten`, `kabupaten_id`, `kecamatan`, `kecamatan_id`, `kelurahan`, `kelurahan_id`.\n\n**Manajemen Alamat Default Atomik:**\n- Jika `is_default` bernilai `true`, sistem secara atomik di basis data akan mengubah status `is_default` pada alamat-alamat lama milik pengguna tersebut menjadi `false`, sehingga hanya ada 1 alamat utama."
 					}
 				},
 				{
-					"name": "Get My Addresses",
+					"name": "Daftar Alamat Saya",
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
 						],
 						"url": {
 							"raw": "{{base_url}}/addresses?limit=10&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["addresses"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"addresses"
+							],
 							"query": [
-								{ "key": "limit", "value": "10" },
-								{ "key": "offset", "value": "0" }
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Jumlah limit alamat per halaman"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Offset pagination"
+								}
 							]
-						}
+						},
+						"description": "### 📋 Daftar Alamat Pengiriman Saya\n\nMenampilkan seluruh daftar alamat pengiriman yang dimiliki oleh pengguna yang sedang login."
+					}
+				},
+				{
+					"name": "Detail Alamat berdasarkan ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/addresses/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"addresses",
+								"1"
+							]
+						},
+						"description": "### 🔍 Detail Alamat berdasarkan ID (Zero-Trust)\n\nMenampilkan rincian alamat pengiriman.\n\n**Proteksi Data:**\n- Jika pengguna mencoba mengakses ID alamat milik orang lain, sistem akan mengembalikan respon `404 Not Found` (mencegah enumerasi data antar-pengguna)."
+					}
+				},
+				{
+					"name": "Perbarui Alamat",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"judul_alamat\": \"Rumah Dago Baru\",\n  \"detail_alamat\": \"Jl. Ir. H. Juanda No. 105 Blok B\",\n  \"is_default\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/addresses/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"addresses",
+								"1"
+							]
+						},
+						"description": "### ✏️ Perbarui Alamat Pengiriman\n\nMemperbarui data alamat pengiriman. Jika `is_default` diubah menjadi `true`, alamat default lama akan dinonaktifkan secara otomatis."
+					}
+				},
+				{
+					"name": "Hapus Alamat",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/addresses/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"addresses",
+								"1"
+							]
+						},
+						"description": "### 🗑️ Hapus Alamat Pengiriman\n\nMenghapus alamat pengiriman milik pengguna yang sedang login (*soft delete*)."
 					}
 				}
 			]
 		},
 		{
-			"name": "5. Categories (Admin RBAC)",
+			"name": "5. Kategori Produk (RBAC Admin)",
+			"description": "Modul taksonomi dan kategori katalog produk. Operasi penambahan, pengubahan, dan penghapusan kategori produk dibatasi secara ketat hanya untuk akun Administrator (`is_admin == true`).",
 			"item": [
 				{
-					"name": "Create Category (Admin Only)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{ "key": "Authorization", "value": "Bearer {{admin_token}}" },
-							{ "key": "Content-Type", "value": "application/json" }
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Fashion Pria\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/categories",
-							"host": ["{{base_url}}"],
-							"path": ["categories"]
-						}
-					}
-				},
-				{
-					"name": "List All Categories (Public)",
+					"name": "Daftar Semua Kategori (Publik)",
 					"request": {
 						"method": "GET",
 						"url": {
 							"raw": "{{base_url}}/categories?limit=10&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["categories"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"categories"
+							],
 							"query": [
-								{ "key": "limit", "value": "10" },
-								{ "key": "offset", "value": "0" }
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Limit kategori"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Offset kategori"
+								}
 							]
-						}
+						},
+						"description": "### 🌐 Daftar Semua Kategori Produk (Publik)\n\nMenampilkan seluruh kategori produk yang aktif di Evermos. Dapat diakses publik tanpa perlu login."
+					}
+				},
+				{
+					"name": "Detail Kategori berdasarkan ID (Publik)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/categories/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"categories",
+								"1"
+							]
+						},
+						"description": "### 🔍 Detail Kategori berdasarkan ID\n\nMenampilkan detail satu kategori produk berdasarkan ID parameter."
+					}
+				},
+				{
+					"name": "Tambah Kategori Baru (Khusus Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Fashion Muslim\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/categories",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"categories"
+							]
+						},
+						"description": "### 🛡️ Tambah Kategori Baru (Admin Only)\n\nMenambahkan kategori produk baru ke dalam katalog sistem.\n\n**Otorisasi RBAC:**\n- Wajib menyertakan token Admin (`admin_token`).\n- Pengguna reguler akan ditolak dengan kode respon `403 Forbidden`."
+					}
+				},
+				{
+					"name": "Perbarui Kategori (Khusus Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Fashion Muslim & Gamis Premium\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/categories/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"categories",
+								"1"
+							]
+						},
+						"description": "### ✏️ Perbarui Kategori (Admin Only)\n\nMemperbarui nama kategori produk. Dibatasi hanya untuk Administrator."
+					}
+				},
+				{
+					"name": "Hapus Kategori (Khusus Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/categories/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"categories",
+								"1"
+							]
+						},
+						"description": "### 🗑️ Hapus Kategori (Admin Only)\n\nMenghapus kategori produk dari sistem (*soft delete*). Dibatasi hanya untuk Administrator."
 					}
 				}
 			]
 		},
 		{
-			"name": "6. Products",
+			"name": "6. Manajemen Produk",
+			"description": "Modul katalog produk e-commerce. Mendukung pembuatan produk dengan unggah gambar file multipart/form-data, penelusuran katalog publik dengan filter pencarian & sortir, serta isolasi kepemilikan produk merchant.",
 			"item": [
 				{
-					"name": "Create Product (Multipart Upload)",
+					"name": "Tambah Produk Baru (Multipart Upload Gambar)",
 					"request": {
 						"method": "POST",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
 						],
 						"body": {
 							"mode": "formdata",
 							"formdata": [
-								{ "key": "category_id", "value": "1", "type": "text" },
-								{ "key": "name", "value": "Kemeja Batik Katun", "type": "text" },
-								{ "key": "description", "value": "Kemeja batik katun premium", "type": "text" },
-								{ "key": "price", "value": "175000", "type": "text" },
-								{ "key": "quantity", "value": "20", "type": "text" },
-								{ "key": "image", "type": "file", "src": "" }
+								{
+									"key": "category_id",
+									"value": "1",
+									"type": "text",
+									"description": "ID kategori produk"
+								},
+								{
+									"key": "name",
+									"value": "Kemeja Batik Katun Premium",
+									"type": "text",
+									"description": "Nama produk"
+								},
+								{
+									"key": "description",
+									"value": "Batik asli buatan tangan dengan bahan katun premium dingin",
+									"type": "text",
+									"description": "Deskripsi produk"
+								},
+								{
+									"key": "price",
+									"value": "150000",
+									"type": "text",
+									"description": "Harga satuan dalam Rupiah"
+								},
+								{
+									"key": "quantity",
+									"value": "20",
+									"type": "text",
+									"description": "Jumlah kuantitas stok yang tersedia"
+								},
+								{
+									"key": "image",
+									"type": "file",
+									"src": "",
+									"description": "File gambar produk (.jpg, .jpeg, .png, .webp)"
+								}
 							]
 						},
 						"url": {
 							"raw": "{{base_url}}/products",
-							"host": ["{{base_url}}"],
-							"path": ["products"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"products"
+							]
+						},
+						"description": "### 📦 Tambah Produk Baru (Multipart Form Data)\n\nMenambahkan produk baru ke toko merchant milik pengguna yang sedang login.\n\n**Penyimpanan Media & Gambar:**\n- Mendukung unggah file gambar (`.jpg`, `.jpeg`, `.png`, `.webp`).\n- File gambar disimpan ke folder server `uploads/products/{userID}_{timestamp}_{filename}`.\n- Path URL gambar yang dihasilkan disimpan pada kolom `image_url`."
 					}
 				},
 				{
-					"name": "Get My Store Products",
+					"name": "Daftar Produk Publik (Filter, Search, Sort & Paging)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/products?search=Batik&category_id=1&sort=price_desc&limit=10&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "Batik",
+									"description": "Pencarian substring pada nama produk"
+								},
+								{
+									"key": "category_id",
+									"value": "1",
+									"description": "Filter berdasarkan ID kategori"
+								},
+								{
+									"key": "store_id",
+									"value": "",
+									"description": "Filter berdasarkan ID toko merchant",
+									"disabled": true
+								},
+								{
+									"key": "sort",
+									"value": "price_desc",
+									"description": "Pengurutan hasil: price_asc | price_desc | newest"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Jumlah produk per halaman"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Offset pagination"
+								}
+							]
+						},
+						"description": "### 🛍️ Katalog Produk Publik (Filtering & Search)\n\nMenampilkan katalog produk yang dijual di Evermos dengan fitur pencarian dan filter lengkap:\n- `search`: Pencarian nama produk (case-insensitive substring).\n- `category_id`: Memfilter produk pada kategori spesifik.\n- `store_id`: Memfilter produk pada toko tertentu.\n- `sort`: Opsi pengurutan (`price_asc`, `price_desc`, atau `newest`).\n- `limit` & `offset`: Paginasi data terstandar."
+					}
+				},
+				{
+					"name": "Lihat Produk Toko Saya",
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
 						],
 						"url": {
-							"raw": "{{base_url}}/products/me",
-							"host": ["{{base_url}}"],
-							"path": ["products", "me"]
-						}
+							"raw": "{{base_url}}/products/me?limit=10&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"products",
+								"me"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Limit per halaman"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Offset data"
+								}
+							]
+						},
+						"description": "### 🏪 Produk Toko Saya\n\nMenampilkan daftar seluruh produk yang dijual khusus oleh toko milik pengguna yang sedang login."
 					}
 				},
 				{
-					"name": "Browse Public Catalog (Filtered & Sorted)",
+					"name": "Detail Produk berdasarkan ID (Publik)",
 					"request": {
 						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/products?search=Batik&category_id=1&sort=newest&limit=10&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["products"],
-							"query": [
-								{ "key": "search", "value": "Batik" },
-								{ "key": "category_id", "value": "1" },
-								{ "key": "sort", "value": "newest" },
-								{ "key": "limit", "value": "10" },
-								{ "key": "offset", "value": "0" }
+							"raw": "{{base_url}}/products/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"products",
+								"1"
 							]
-						}
+						},
+						"description": "### 🔍 Detail Produk berdasarkan ID\n\nMenampilkan detail lengkap sebuah produk beserta relasi Toko (`Store`) dan Kategori (`Category`)."
+					}
+				},
+				{
+					"name": "Perbarui Produk (Isolasi Merchant)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "price",
+									"value": "175000",
+									"type": "text",
+									"description": "Harga baru produk"
+								},
+								{
+									"key": "quantity",
+									"value": "25",
+									"type": "text",
+									"description": "Stok baru produk"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/products/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"products",
+								"1"
+							]
+						},
+						"description": "### ✏️ Perbarui Produk (Zero-Trust Merchant Isolation)\n\nMemperbarui informasi produk atau mengunggah gambar baru.\n\n**Aturan Bisnis & Isolasi:**\n- Hanya pemilik toko produk tersebut yang diizinkan memperbarui data.\n- Jika merchant lain mencoba mengedit produk ini, server akan menolak dengan `403 Forbidden`."
+					}
+				},
+				{
+					"name": "Hapus Produk (Isolasi Merchant)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/products/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"products",
+								"1"
+							]
+						},
+						"description": "### 🗑️ Hapus Produk Milik Sendiri\n\nMenghapus produk dari katalog toko merchant (*soft delete*). Akses dari pengguna atau penjual lain akan menghasilkan `403 Forbidden`."
 					}
 				}
 			]
 		},
 		{
-			"name": "7. Transactions",
+			"name": "7. Transaksi & Checkout Engine",
+			"description": "Engine pemrosesan checkout pesanan berstandar ACID dengan pessimistic row locking, pemotongan kuantitas inventaris secara atomik, dan pencatatan snapshot harga/kuantitas historis yang immutable pada product_logs.",
 			"item": [
 				{
-					"name": "Checkout Order (Atomic Transaction)",
+					"name": "Checkout Pesanan (Atomic Transaction)",
 					"request": {
 						"method": "POST",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" },
-							{ "key": "Content-Type", "value": "application/json" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
 						"body": {
 							"mode": "raw",
@@ -347,50 +893,88 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/transactions",
-							"host": ["{{base_url}}"],
-							"path": ["transactions"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							]
+						},
+						"description": "### 💳 Checkout Pesanan Baru (ACID Transaction)\n\nMengeksekusi pemesanan produk dalam **satu transaksi basis data MySQL yang atomik**:\n\n1. **Verifikasi Alamat:** Memastikan `address_id` valid dan benar-benar milik pembeli yang sedang login.\n2. **Pencegahan Deadlock:** ID produk diurutkan secara menaik (*ascending order*) sebelum penguncian baris.\n3. **Pessimistic Row Locking:** Menjalankan `SELECT ... FOR UPDATE` pada tabel produk untuk mengunci baris inventaris secara eksklusif.\n4. **Validasi Stok:** Memverifikasi ketersediaan stok (`product.quantity >= item.quantity`). Jika stok kurang, transaksi dibatalkan (*rollback*) dan mengembalikan `400 Bad Request`.\n5. **Deduction Stok:** Mengurangi kuantitas stok produk di database secara instan.\n6. **Invoice Generator:** Menghasilkan nomor invoice unik (`INV-{userID}-{timestamp}`).\n7. **Pencatatan Master:** Menyimpan transaksi dengan status awal `pending`.\n8. **Immutable Snapshot:** Menyimpan snapshot harga satuan dan kuantitas saat pembelian ke dalam tabel `product_logs`."
 					}
 				},
 				{
-					"name": "Get My Purchase History",
+					"name": "Riwayat Transaksi Saya",
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
 						],
 						"url": {
 							"raw": "{{base_url}}/transactions/me?limit=10&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["transactions", "me"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions",
+								"me"
+							],
 							"query": [
-								{ "key": "limit", "value": "10" },
-								{ "key": "offset", "value": "0" }
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Jumlah transaksi per halaman"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Offset pagination"
+								}
 							]
-						}
+						},
+						"description": "### 📜 Riwayat Transaksi Saya\n\nMenampilkan seluruh daftar transaksi belanja yang telah dibuat oleh pengguna yang sedang login, lengkap dengan status invoice dan total pembayaran."
 					}
 				},
 				{
-					"name": "Get My Transaction Detail",
+					"name": "Detail Transaksi & Immutable Logs",
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
 						],
 						"url": {
 							"raw": "{{base_url}}/transactions/me/1",
-							"host": ["{{base_url}}"],
-							"path": ["transactions", "me", "1"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions",
+								"me",
+								"1"
+							]
+						},
+						"description": "### 🧾 Detail Transaksi & Log Produk Historis\n\nMenampilkan rincian transaksi belanja beserta data snapshot di `product_logs`.\n\n**Keamanan Multi-Tenant:**\n- Hanya pembeli pemilik transaksi yang dapat melihat detail invoice ini.\n- Upaya pengguna lain mengakses transaksi ini akan dibalas dengan respon `404 Not Found`."
 					}
 				},
 				{
-					"name": "Update Transaction Status",
+					"name": "Perbarui Status Pesanan",
 					"request": {
 						"method": "PATCH",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" },
-							{ "key": "Content-Type", "value": "application/json" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
 						],
 						"body": {
 							"mode": "raw",
@@ -398,28 +982,96 @@
 						},
 						"url": {
 							"raw": "{{base_url}}/transactions/me/1",
-							"host": ["{{base_url}}"],
-							"path": ["transactions", "me", "1"]
-						}
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions",
+								"me",
+								"1"
+							]
+						},
+						"description": "### 🔄 Perbarui Status Pesanan\n\nMemperbarui status transaksi milik pengguna.\n- Opsi status: `pending`, `completed`, `cancelled`."
 					}
 				},
 				{
-					"name": "List All Transactions (Admin Only)",
+					"name": "Daftar Semua Transaksi Platform (Khusus Admin)",
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
 						],
 						"url": {
 							"raw": "{{base_url}}/transactions?status=pending&limit=10&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["transactions"],
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"transactions"
+							],
 							"query": [
-								{ "key": "status", "value": "pending" },
-								{ "key": "limit", "value": "10" },
-								{ "key": "offset", "value": "0" }
+								{
+									"key": "status",
+									"value": "pending",
+									"description": "Filter status transaksi (pending, completed, cancelled)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Limit data per halaman"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Offset data"
+								}
 							]
-						}
+						},
+						"description": "### 🛡️ Daftar Semua Transaksi Platform (Admin Only)\n\nMenampilkan seluruh transaksi dari semua pengguna di seluruh platform Evermos.\n\n**Otorisasi:** Memerlukan akun berstatus Admin (`admin_token`)."
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Dokumentasi & Swagger UI",
+			"description": "Endpoint eksplorasi interaktif dan pemeriksaan kesehatan (health check) server backend.",
+			"item": [
+				{
+					"name": "Pemeriksaan Kesehatan Server (Health Check)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "### 💓 Health Check API\n\nMemeriksa apakah server backend aktif dan siap menerima koneksi HTTP."
+					}
+				},
+				{
+					"name": "Spesifikasi OpenAPI 3.0 (JSON)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/swagger/doc.json",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"swagger",
+								"doc.json"
+							]
+						},
+						"description": "### 📄 OpenAPI 3.0.3 Specification JSON\n\nMengambil spesifikasi OpenAPI 3.0 lengkap dalam format JSON yang mendasari antarmuka Swagger UI."
 					}
 				}
 			]
