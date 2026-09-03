@@ -1,113 +1,76 @@
-# Evermos Multi-Tenant E-Commerce RESTful API
+# Rakamin Evermos: Backend E-Commerce API Service
 
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://golang.org)
-[![Fiber Framework](https://img.shields.io/badge/Fiber-v2-00ACD7?style=flat&logo=go)](https://gofiber.io)
-[![ORM](https://img.shields.io/badge/GORM-MySQL%208.0-4479A1?style=flat&logo=mysql)](https://gorm.io)
-[![Architecture](https://img.shields.io/badge/Architecture-Clean%20Architecture-brightgreen?style=flat)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)
+![Architecture](https://img.shields.io/badge/Architecture-Clean_Architecture-blue?style=flat)
+![Database](https://img.shields.io/badge/Database-MySQL-4479A1?style=flat&logo=mysql)
+![Coverage](https://img.shields.io/badge/Tests-100%25_Passing-brightgreen?style=flat)
 
-Backend RESTful API platform e-commerce multi-tenant yang tangguh, aman, dan siap pakai. Dibangun menggunakan bahasa pemrograman **Go (Golang)** dengan HTTP framework **Go Fiber v2**, persistence ORM **GORM**, dan basis data **MySQL 8.0**. Seluruh kode diorganisasi secara ketat mengikuti prinsip **Clean Architecture** (Robert C. Martin).
+Backend Service E-Commerce berbasis **Go (Golang)** dengan penerapan **Clean Architecture**, dibangun sebagai tugas akhir Rakamin Academy × Evermos Virtual Internship.
 
----
-
-## 📑 Daftar Isi
-
-- [Fitur Utama](#-fitur-utama)
-- [Arsitektur & Struktur Folder](#-arsitektur--struktur-folder)
-- [Diagram Entitas Basis Data (ERD)](#-diagram-entitas-basis-data-erd)
-- [Prasyarat Sistem](#-prasyarat-sistem)
-- [Panduan Instalasi & Menjalankan Aplikasi](#-panduan-instalasi--menjalankan-aplikasi)
-- [Daftar Endpoint API](#-daftar-endpoint-api)
-- [Eksplorasi API (Swagger UI & Postman)](#-eksplorasi-api-swagger-ui--postman)
-- [Menjalankan Pengujian (Testing)](#-menjalankan-pengujian-testing)
-- [Format Respon Standar](#-format-respon-standar)
+Aplikasi ini mencakup fitur lengkap mulai dari Autentikasi, Pembuatan Toko Otomatis, Manajemen Produk (Multipart Upload), Transaksi Atomik (Row Locking & Immutable Product Logs), hingga Pengelolaan Alamat Standar Wilayah Indonesia.
 
 ---
 
-## ✨ Fitur Utama
-
-1. **Autentikasi & Otorisasi Terenkripsi (JWT & Bcrypt):**
-   - Enkripsi kata sandi menggunakan salt hashing `bcrypt`.
-   - Autentikasi stateless menggunakan **JWT (JSON Web Token)** dengan Bearer middleware.
-   - Pengecekan keunikan `email` dan nomor telepon (`phone`).
-
-2. **Automated Store Provisioning (Invarian #1):**
-   - Setiap pengguna yang mendaftar melalui `/api/v1/auth/register` secara otomatis dibuatkan toko merchant bernama `"{UserName}'s Store"` dalam satu transaksi basis data atomik (relasi 1:1).
-
-3. **Keamanan Zero-Trust Multi-Tenancy:**
-   - Pengguna hanya memiliki hak akses penuh terhadap datanya sendiri.
-   - Upaya mengakses atau memodifikasi toko, alamat, produk, atau pesanan milik pengguna lain akan ditolak (`403 Forbidden` atau `404 Not Found`).
-
-4. **Hierarki Alamat Wilayah Administratif Indonesia:**
-   - Mengikuti kode dan nama resmi pembagian wilayah Indonesia: `provinsi`, `provinsi_id`, `kabupaten`, `kabupaten_id`, `kecamatan`, `kecamatan_id`, `kelurahan`, `kelurahan_id`.
-   - Manajemen alamat utama default secara atomik: pengaktifan `is_default = true` otomatis menonaktifkan alamat default sebelumnya.
-
-5. **Tata Kelola Kategori Produk (RBAC - Admin Only):**
-   - Penambahan, pembaruan, dan penghapusan kategori produk dibatasi hanya untuk akun Administrator (`is_admin == true`).
-   - Pengguna publik dan reguler memiliki akses baca (*read-only*).
-
-6. **Katalog Produk & Unggah Media Multipart:**
-   - Pembuatan dan pembaruan produk mendukung unggah gambar file nyata (`multipart/form-data`) yang disimpan pada folder server `uploads/products/`.
-   - Penelusuran katalog publik dengan filter pencarian nama (`search`), filter kategori (`category_id`), filter toko (`store_id`), pengurutan harga (`sort=price_asc|price_desc|newest`), dan paginasi (`limit` & `offset`).
-
-7. **Engine Transaksi ACID & Log Historis Immutable (`product_logs`):**
-   - Transaksi checkout dieksekusi dalam satu transaksi MySQL atomik:
-     1. Validasi kepemilikan alamat pengiriman.
-     2. Pengurutan ID produk (*ascending*) untuk mencegah *deadlock*.
-     3. *Pessimistic Row Locking* (`SELECT ... FOR UPDATE`) untuk mencegah *race condition* dan *overselling*.
-     4. Verifikasi dan pemotongan stok otomatis di inventaris.
-     5. Pembuatan nomor invoice unik (`INV-{userID}-{timestamp}`).
-     6. Penyimpanan snapshot harga satuan dan kuantitas saat pembelian ke dalam tabel `product_logs`.
+## Daftar Isi
+- [Tech Stack](#tech-stack)
+- [Struktur Project](#struktur-project)
+- [Fitur & Arsitektur](#fitur--arsitektur)
+- [Database Schema (ERD)](#database-schema-erd)
+- [Testing](#testing)
+- [API Endpoints](#api-endpoints)
+- [Cara Menjalankan](#cara-menjalankan)
+- [Dokumentasi Lengkap](#dokumentasi-lengkap)
 
 ---
 
-## 🏛️ Arsitektur & Struktur Folder
+## Tech Stack
 
-Proyek ini menerapkan **Clean Architecture** dengan dependensi yang selalu mengarah ke dalam (*inward-pointing dependencies*):
+| Komponen | Teknologi |
+| :--- | :--- |
+| **Language** | Go 1.25+ |
+| **HTTP Framework** | Go Fiber v2 (`github.com/gofiber/fiber/v2`) |
+| **Database** | MySQL 8.0 (Docker & Production) |
+| **ORM** | GORM (`gorm.io/gorm` + `gorm.io/driver/mysql`) |
+| **Auth & Security** | JWT (`golang-jwt/jwt/v5`) + Bcrypt Password Hashing |
+| **API Docs** | Interactive Swagger UI / OpenAPI 3.0.3 (`/swagger`) |
+| **API Client Docs**| Postman Collection v2.1.0 (Lengkap Bahasa Indonesia) |
+| **Testing** | `testify/assert` + `testify/require` + Go Race Detector |
+| **Administrative Standard** | Standar Kode & Wilayah Indonesia (Provinsi, Kabupaten, Kecamatan, Kelurahan) |
 
-```
-[ Delivery Layer: Fiber HTTP Handlers & Middlewares ]
-                       │
-                       ▼
-[ Application Business Layer: UseCases ]
-                       │
-                       ▼
-[ Persistence Layer: Repository Interfaces & GORM Implementations ]
-                       │
-                       ▼
-[ Enterprise Domain Layer: Entities & DTO Models ]
-```
+---
 
-### Struktur Direktori:
+## Struktur Project
 
-```
+Penerapan **Clean Architecture** memisahkan *Business Logic* dengan kerangka eksternal secara konsisten:
+
+```text
 .
 ├── app/
-│   └── main.go                 # Entry point bootstrap aplikasi
+│   └── main.go                     # Entry point + bootstrap server
 ├── bin/
-│   └── evermos-api             # Binary hasil kompilasi produksi
+│   └── evermos-api                 # Standalone compiled production binary
 ├── docs/
-│   └── swagger.json            # Spesifikasi OpenAPI 3.0
+│   └── swagger.json                # Spesifikasi OpenAPI 3.0.3
 ├── internal/
-│   ├── helper/                 # Formatter respon JSON terpadu
+│   ├── helper/                     # Formatter respon JSON terpadu & pagination
 │   ├── infrastructure/
-│   │   ├── container/          # Dependency Injection (DI) Container
-│   │   └── mysql/              # Koneksi MySQL pool & AutoMigrate
+│   │   ├── container/              # Dependency Injection (DI) Container
+│   │   └── mysql/                  # Connection pooling & GORM AutoMigrate
 │   ├── pkg/
-│   │   ├── entity/             # GORM Domain Entities (Database Models)
-│   │   ├── model/              # Data Transfer Objects (DTOs) Request & Response
-│   │   ├── repository/         # Abstraksi database & GORM queries
-│   │   └── usecase/            # Aturan bisnis murni & isolasi multi-tenant
+│   │   ├── entity/                 # GORM Domain Entities (7 model basis data)
+│   │   ├── model/                  # Data Transfer Objects (DTOs Request & Response)
+│   │   ├── repository/             # Abstraksi database & GORM persistence
+│   │   └── usecase/                # Business logic & isolasi multi-tenant
 │   ├── server/
 │   │   └── http/
-│   │       ├── handler/        # Fiber HTTP Controllers
-│   │       ├── middleware/     # JWT Auth & Admin RBAC Middlewares
-│   │       └── httproute.go    # Registrasi rute endpoint
-│   └── utils/                  # Utility JWT token & bcrypt hashing
+│   │       ├── handler/            # Fiber HTTP Controllers murni
+│   │       ├── middleware/         # JWT Auth & Admin RBAC Middlewares
+│   │       └── httproute.go        # Registrasi endpoint & rute
+│   └── utils/                      # Bcrypt password hashing & JWT lifecycle
 ├── test/
-│   └── e2e/                    # Folder Khusus Pengujian Integrasi End-to-End
-│       ├── test_helper.go      # Setup DB & Fiber test runner terpusat
-│       ├── auth_e2e_test.go    # Test E2E autentikasi & auto-store
+│   └── e2e/                        # Folder khusus pengujian E2E & integrasi
+│       ├── test_helper.go          # Centralized test runner & database auto-migrate
+│       ├── auth_e2e_test.go
 │       ├── user_store_e2e_test.go
 │       ├── address_e2e_test.go
 │       ├── category_e2e_test.go
@@ -115,16 +78,52 @@ Proyek ini menerapkan **Clean Architecture** dengan dependensi yang selalu menga
 │       ├── transaction_e2e_test.go
 │       └── swagger_e2e_test.go
 ├── uploads/
-│   └── products/               # Folder penyimpanan file upload gambar
-├── docker-compose.yaml         # Konfigurasi container MySQL 8.0
+│   └── products/                   # Penyimpanan fisik file gambar produk
 ├── Evermos_API.postman_collection.json # Koleksi Postman lengkap dengan dokumentasi ID
+├── docker-compose.yaml             # Layanan MySQL 8.0 otomatis
+├── .env.example                    # Template konfigurasi environment
 ├── go.mod & go.sum
-└── .env.example
+└── README.md
 ```
+
+> [!NOTE]
+> **Clean Architecture Boundary:** Folder `internal/server/http/handler/` murni hanya menangani request/response HTTP. Seluruh validasi kepemilikan dan aturan bisnis berada di `internal/pkg/usecase/`, dan seluruh test integrasi terisolasi di folder `test/e2e/`.
 
 ---
 
-## 🗄️ Diagram Entitas Basis Data (ERD)
+## Fitur & Arsitektur
+
+### Modul 1: Autentikasi & Registrasi
+- **Register & Auto-Create Toko (Invarian #1)**: Dalam satu *Database Transaction* atomik, akun pengguna dibuat bersamaan dengan toko merchant bernama `"{UserName}'s Store"` (relasi 1:1).
+- **Login JWT**: Kata sandi di-hash menggunakan `bcrypt`. Token JWT di-generate dengan masa berlaku terkonfigurasi.
+- **Validasi Keunikan**: `email` dan `phone` wajib unik dan divalidasi ganda di level database dan aplikasi.
+
+### Modul 2: Wilayah & Alamat Pengiriman
+- **Standar Hierarki Wilayah Indonesia**: Menyimpan data resmi `provinsi`, `provinsi_id`, `kabupaten`, `kabupaten_id`, `kecamatan`, `kecamatan_id`, `kelurahan`, `kelurahan_id`.
+- **Atomic Default Rebalancing**: Menandai sebuah alamat sebagai default (`is_default = true`) secara otomatis menonaktifkan status default pada alamat-alamat lama dalam satu transaksi database.
+- **Isolasi Alamat**: Pengguna hanya dapat melihat, mengedit, dan menghapus alamat miliknya sendiri (`404 Not Found` jika mengakses alamat orang lain).
+
+### Modul 3: Produk & Kategori
+- **Multipart Upload**: Upload foto produk asli melalui `multipart/form-data` yang disimpan ke folder server `uploads/products/{userID}_{timestamp}_{filename}`.
+- **Admin RBAC Kategori**: Manajemen kategori (`POST`, `PATCH`, `DELETE` `/categories`) diproteksi ketat hanya untuk Administrator (`is_admin == true`). Pengguna reguler ditolak dengan `403 Forbidden`.
+- **Katalog Publik & Filtering**: Penelusuran produk publik dengan filter substring nama (`search`), filter kategori (`category_id`), filter toko (`store_id`), pengurutan harga (`sort=price_asc|price_desc|newest`), dan paginasi terpadu.
+- **Isolasi Merchant**: Penjual hanya dapat memperbarui atau menghapus produk milik tokonya sendiri (`403 Forbidden` jika melanggar).
+
+### Modul 4: Transaksi Atomik & Checkout Engine
+- **Pessimistic Row Locking (`FOR UPDATE`)**: Mencegah *race condition* dan *overselling* stok pada saat lonjakan pesanan bersamaan.
+- **Deadlock Prevention**: Pengurutan ID produk (*ascending*) sebelum penguncian baris database.
+- **Validasi & Deduct Stok Otomatis**: Memastikan kuantitas stok mencukupi sebelum memotong stok secara instan di inventaris.
+- **Invoice Number Generator**: Format unik otomatis `INV-{userID}-{timestamp}`.
+- **Immutable Historical Snapshots (`product_logs`)**: Snapshot harga satuan dan kuantitas produk saat pembelian disalin secara permanen ke tabel `product_logs`. Perubahan harga produk di kemudian hari tidak merusak integritas invoice lama.
+
+### Modul 5: Security & Multi-Tenancy
+- **Zero-Trust Multi-Tenancy**: Data antar-pengguna terisolasi penuh. Seluruh operasi mengekstrak `userID` dari token JWT terverifikasi.
+- **Soft Delete Terpusat**: Seluruh entitas menggunakan `gorm.DeletedAt` sehingga data historis tetap terlindungi.
+- **Connection Pooling Teroptimasi**: Konfigurasi `MaxOpenConns`, `MaxIdleConns`, dan `ConnMaxLifetime` untuk efisiensi koneksi database.
+
+---
+
+## Database Schema (ERD)
 
 ```mermaid
 erDiagram
@@ -228,167 +227,19 @@ erDiagram
 
 ---
 
-## 📋 Prasyarat Sistem
+## Testing
 
-- **Go (Golang):** Versi `1.25+`
-- **Basis Data:** MySQL `8.0+` (atau jalankan via Docker)
-- **Containerization:** Docker & Docker Compose
-
----
-
-## 🚀 Panduan Instalasi & Menjalankan Aplikasi
-
-### 1. Kloning Repositori
-```bash
-git clone https://github.com/VUXXE/Rakamim-Evermost.git
-cd Rakamim-Evermost
-```
-
-### 2. Konfigurasi Environment Variables
-Salin template konfigurasi `.env.example` menjadi `.env`:
-```bash
-cp .env.example .env
-```
-
-Sesuaikan isi `.env` bila diperlukan:
-```ini
-APP_NAME=Evermos-Ecommerce-API
-APP_PORT=8080
-APP_ENV=development
-
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=password
-DB_NAME=evermos
-
-JWT_SECRET=super_secret_jwt_key_evermos_2026_safe_and_long!
-JWT_EXP_HOURS=72
-```
-
-### 3. Menjalankan Layanan MySQL
-Gunakan Docker Compose untuk menyalakan basis data MySQL 8.0 secara otomatis:
-```bash
-docker compose up -d
-```
-
-### 4. Mengunduh Dependensi Go
-```bash
-go mod download
-go mod tidy
-```
-
-### 5. Menjalankan Server Backend
-```bash
-go run ./app/main.go
-```
-*Server akan aktif dan melayani request pada: `http://localhost:8080`*
-
-### 6. (Opsional) Mengompilasi Binary Produksi
-```bash
-go build -o bin/evermos-api ./app/main.go
-./bin/evermos-api
-```
-
----
-
-## 📡 Daftar Endpoint API
-
-Semua rute API terdaftar di bawah prefix `/api/v1`:
-
-### 1. Autentikasi (`/auth`)
-| Method | Endpoint | Akses | Keterangan |
-|:---:|:---|:---:|:---|
-| `POST` | `/api/v1/auth/register` | Publik | Registrasi akun & otomatis membuat Toko |
-| `POST` | `/api/v1/auth/login` | Publik | Login & penerbitan token JWT |
-
-### 2. Pengguna (`/users`)
-| Method | Endpoint | Akses | Keterangan |
-|:---:|:---|:---:|:---|
-| `GET` | `/api/v1/users/me` | Bearer | Melihat profil pengguna yang sedang login |
-| `PATCH` | `/api/v1/users/me` | Bearer | Memperbarui profil diri sendiri |
-| `DELETE` | `/api/v1/users/me` | Bearer | Menghapus akun diri sendiri (*soft delete*) |
-| `GET` | `/api/v1/users` | Admin | Melihat daftar seluruh pengguna terdaftar |
-| `GET` | `/api/v1/users/:id` | Bearer | Melihat detail pengguna berdasarkan ID |
-
-### 3. Toko (`/stores`)
-| Method | Endpoint | Akses | Keterangan |
-|:---:|:---|:---:|:---|
-| `GET` | `/api/v1/stores/me` | Bearer | Melihat profil toko milik sendiri |
-| `GET` | `/api/v1/stores` | Publik | Daftar toko publik dengan paginasi |
-| `GET` | `/api/v1/stores/:id` | Publik | Melihat detail toko berdasarkan ID |
-| `PATCH` | `/api/v1/stores/:id` | Bearer | Memperbarui toko (Isolasi Zero-Trust) |
-| `DELETE` | `/api/v1/stores/:id` | Bearer | Menghapus toko milik sendiri |
-
-### 4. Alamat Pengiriman (`/addresses`)
-| Method | Endpoint | Akses | Keterangan |
-|:---:|:---|:---:|:---|
-| `POST` | `/api/v1/addresses` | Bearer | Tambah alamat (standar wilayah Indonesia) |
-| `GET` | `/api/v1/addresses` | Bearer | Daftar alamat milik pengguna login |
-| `GET` | `/api/v1/addresses/:id` | Bearer | Detail alamat (Isolasi Zero-Trust) |
-| `PATCH` | `/api/v1/addresses/:id` | Bearer | Perbarui alamat pengiriman |
-| `DELETE` | `/api/v1/addresses/:id` | Bearer | Hapus alamat pengiriman |
-
-### 5. Kategori Produk (`/categories`)
-| Method | Endpoint | Akses | Keterangan |
-|:---:|:---|:---:|:---|
-| `GET` | `/api/v1/categories` | Publik | Daftar kategori produk dengan paginasi |
-| `GET` | `/api/v1/categories/:id` | Publik | Detail kategori berdasarkan ID |
-| `POST` | `/api/v1/categories` | Admin | Tambah kategori baru (Khusus Admin) |
-| `PATCH` | `/api/v1/categories/:id` | Admin | Perbarui nama kategori (Khusus Admin) |
-| `DELETE` | `/api/v1/categories/:id` | Admin | Hapus kategori (Khusus Admin) |
-
-### 6. Produk (`/products`)
-| Method | Endpoint | Akses | Keterangan |
-|:---:|:---|:---:|:---|
-| `POST` | `/api/v1/products` | Bearer | Tambah produk baru (Multipart Form Upload) |
-| `GET` | `/api/v1/products` | Publik | Katalog produk (filter `search`, `category_id`, `sort`, dll) |
-| `GET` | `/api/v1/products/me` | Bearer | Daftar produk milik toko sendiri |
-| `GET` | `/api/v1/products/:id` | Publik | Detail produk berdasarkan ID |
-| `PATCH` | `/api/v1/products/:id` | Bearer | Perbarui produk (Isolasi Merchant) |
-| `DELETE` | `/api/v1/products/:id` | Bearer | Hapus produk milik toko sendiri |
-
-### 7. Transaksi (`/transactions`)
-| Method | Endpoint | Akses | Keterangan |
-|:---:|:---|:---:|:---|
-| `POST` | `/api/v1/transactions` | Bearer | Checkout pesanan (ACID Transaction & Row Locks) |
-| `GET` | `/api/v1/transactions/me` | Bearer | Riwayat transaksi belanja pembeli |
-| `GET` | `/api/v1/transactions/me/:id` | Bearer | Detail transaksi & snapshot `product_logs` |
-| `PATCH` | `/api/v1/transactions/me/:id` | Bearer | Perbarui status pesanan (`completed`/`cancelled`) |
-| `GET` | `/api/v1/transactions` | Admin | Seluruh transaksi di platform (Khusus Admin) |
-
----
-
-## 🔍 Eksplorasi API (Swagger UI & Postman)
-
-### 1. Melalui Swagger UI (Browser)
-Aplikasi menyediakan antarmuka interaktif bawaan:
-- Buka browser pada alamat: **[http://localhost:8080/swagger](http://localhost:8080/swagger)** atau **[http://localhost:8080/docs](http://localhost:8080/docs)**
-- Spesifikasi OpenAPI 3.0: `http://localhost:8080/swagger/doc.json`
-- Gunakan tombol **Authorize** untuk memasukkan JWT Bearer Token (`Bearer <token>`) agar dapat menguji endpoint yang terproteksi secara langsung.
-
-### 2. Melalui Postman Collection
-Koleksi Postman v2.1.0 lengkap telah disediakan pada file:
-`Evermos_API.postman_collection.json`
-- Buka Postman -> Klik **Import** -> Pilih file `Evermos_API.postman_collection.json`.
-- Seluruh 8 modul telah dilengkapi deskripsi lengkap berbahasa Indonesia pada tab **Documentation / Docs**.
-- Variabel `{{base_url}}`, `{{token}}`, dan `{{admin_token}}` telah dikonfigurasi secara dinamis.
-
----
-
-## 🧪 Menjalankan Pengujian (Testing)
-
-Pengujian dibagi menjadi pengujian unit terisolasi dan pengujian integrasi End-to-End (E2E) pada folder khusus `test/e2e/`:
+Pengujian dilakukan secara komprehensif mencakup **Unit Testing** pada lapis domain & utilitas, serta **Integration / E2E Testing** di folder khusus `test/e2e/` menggunakan instance MySQL aktif.
 
 ```bash
-# 1. Menjalankan seluruh test di folder khusus test/
+# 1. Menjalankan seluruh pengujian di folder khusus test/e2e
 go test -v ./test/e2e/...
 
-# 2. Menjalankan seluruh test di proyek (Unit + Integration E2E)
+# 2. Menjalankan seluruh test suite di proyek (Unit + E2E)
 go test -v ./...
 
-# 3. Menjalankan test dengan Race Condition Detector
-go test -race ./...
+# 3. Menjalankan pengujian dengan Race Condition Detector
+go test -v -race ./...
 
 # 4. Memeriksa coverage pengujian
 go test -coverprofile=coverage.out ./...
@@ -397,38 +248,119 @@ go tool cover -func=coverage.out
 
 ---
 
-## 📦 Format Respon Standar
+## API Endpoints
 
-Semua endpoint mengembalikan struktur respon JSON yang seragam:
+Seluruh endpoint terpusat pada base path `/api/v1`:
 
-### Respon Sukses
-```json
-{
-  "code": 200,
-  "message": "operation successful",
-  "data": { ... }
-}
+<details>
+<summary><b>Lihat Ringkasan Daftar Endpoint</b></summary>
+
+### Public Routes
+| Method | Rute | Deskripsi |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Pendaftaran User & Auto-Create Toko |
+| `POST` | `/api/v1/auth/login` | Mendapatkan JWT Bearer Token |
+| `GET` | `/api/v1/stores` | List Toko Terdaftar (Paginasi) |
+| `GET` | `/api/v1/stores/:id` | Detail Toko berdasarkan ID |
+| `GET` | `/api/v1/categories` | List Kategori Produk (Paginasi) |
+| `GET` | `/api/v1/categories/:id` | Detail Kategori berdasarkan ID |
+| `GET` | `/api/v1/products` | Katalog Produk (Search, Filter, Sort) |
+| `GET` | `/api/v1/products/:id` | Detail Produk berdasarkan ID |
+| `GET` | `/api/v1/health` | Health Check Server |
+| `GET` | `/swagger` | Antarmuka Interaktif Swagger UI |
+| `GET` | `/swagger/doc.json` | Spesifikasi OpenAPI 3.0 (JSON) |
+
+### Protected Routes (Bearer Token)
+| Method | Rute | Deskripsi |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/users/me` | Lihat profil sendiri |
+| `PATCH`| `/api/v1/users/me` | Perbarui profil sendiri |
+| `DELETE`| `/api/v1/users/me` | Hapus akun sendiri (*soft delete*) |
+| `GET` | `/api/v1/users/:id` | Detail user berdasarkan ID |
+| `GET` | `/api/v1/stores/me` | Lihat toko merchant sendiri |
+| `PATCH`| `/api/v1/stores/:id` | Perbarui toko sendiri (Zero-Trust) |
+| `DELETE`| `/api/v1/stores/:id` | Hapus toko sendiri |
+| `POST` | `/api/v1/addresses` | Tambah alamat pengiriman baru |
+| `GET` | `/api/v1/addresses` | Daftar alamat milik sendiri |
+| `GET` | `/api/v1/addresses/:id` | Detail alamat sendiri |
+| `PATCH`| `/api/v1/addresses/:id` | Perbarui alamat sendiri |
+| `DELETE`| `/api/v1/addresses/:id` | Hapus alamat sendiri |
+| `POST` | `/api/v1/products` | Tambah produk (Multipart Form Upload) |
+| `GET` | `/api/v1/products/me` | Daftar produk milik toko sendiri |
+| `PATCH`| `/api/v1/products/:id` | Perbarui produk sendiri |
+| `DELETE`| `/api/v1/products/:id` | Hapus produk sendiri |
+| `POST` | `/api/v1/transactions` | Checkout pesanan (ACID Transaction) |
+| `GET` | `/api/v1/transactions/me` | Riwayat pesanan sendiri |
+| `GET` | `/api/v1/transactions/me/:id`| Detail pesanan & log produk historis |
+| `PATCH`| `/api/v1/transactions/me/:id`| Perbarui status pesanan (`completed`/`cancelled`) |
+
+### Admin Routes (`is_admin == true`)
+| Method | Rute | Deskripsi |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/users` | List seluruh user terdaftar (Admin Only) |
+| `POST` | `/api/v1/categories` | Tambah kategori baru (Admin Only) |
+| `PATCH`| `/api/v1/categories/:id` | Perbarui kategori (Admin Only) |
+| `DELETE`| `/api/v1/categories/:id` | Hapus kategori (Admin Only) |
+| `GET` | `/api/v1/transactions` | List seluruh transaksi platform (Admin Only) |
+
+</details>
+
+---
+
+## Cara Menjalankan
+
+### 1. Setup Database
+Pastikan layanan Docker atau MySQL aktif. Salin konfigurasi environment:
+```bash
+cp .env.example .env
 ```
 
-### Respon Sukses dengan Paginasi
-```json
-{
-  "code": 200,
-  "message": "list fetched successfully",
-  "data": {
-    "total": 42,
-    "limit": 10,
-    "offset": 0,
-    "items": [ ... ]
-  }
-}
+Jalankan MySQL 8.0 melalui Docker Compose:
+```bash
+docker compose up -d
 ```
 
-### Respon Error
-```json
-{
-  "code": 400,
-  "message": "validation error or description",
-  "error": "detail error message"
-}
+### 2. Jalankan Server
+```bash
+go run app/main.go
 ```
+*Server akan berjalan di port `:8080`.*
+
+Atau jalankan binary produksi yang sudah terkompilasi:
+```bash
+./bin/evermos-api
+```
+
+### 3. Eksplorasi API lewat Swagger UI
+Buka browser pada alamat:
+👉 **[http://localhost:8080/swagger](http://localhost:8080/swagger)** (atau [http://localhost:8080/docs](http://localhost:8080/docs))
+
+1. Lakukan registrasi atau login pada endpoint `POST /api/v1/auth/login`.
+2. Salin token JWT yang dihasilkan.
+3. Klik tombol hijau **Authorize 🔓** di pojok kanan atas Swagger UI.
+4. Masukkan token dengan format: `Bearer {TOKEN}`.
+5. Jalankan pengetesan endpoint terproteksi secara interaktif langsung dari browser!
+
+### 4. Eksplorasi API lewat Postman Collection
+Import file **`Evermos_API.postman_collection.json`** ke dalam Postman:
+- Seluruh endpoint sudah dikelompokkan dalam 8 modul rapi.
+- Dilengkapi dengan dokumentasi lengkap berbahasa Indonesia pada tab **Docs / Documentation** di Postman.
+- Variabel lingkungan terkonfigurasi otomatis: `{{base_url}}`, `{{token}}`, dan `{{admin_token}}`.
+
+---
+
+## Dokumentasi Lengkap
+
+| Dokumen | Lokasi File / URL |
+| :--- | :--- |
+| **Spesifikasi OpenAPI 3.0 (JSON)** | `docs/swagger.json` atau `/swagger/doc.json` |
+| **Koleksi Postman v2.1.0** | `Evermos_API.postman_collection.json` |
+| **Antarmuka Swagger UI** | `http://localhost:8080/swagger` |
+| **Pengujian Integrasi E2E** | `test/e2e/` |
+| **Entity Database Models** | `internal/pkg/entity/` |
+
+---
+
+## License
+
+Didistribusikan di bawah lisensi MIT. Lihat file `LICENSE` untuk informasi lebih lanjut.
