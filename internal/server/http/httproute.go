@@ -109,4 +109,19 @@ func SetupRoutes(cfg RouterConfig) {
 		products.Get("/", c.ProductHandler.GetAllProducts)
 		products.Get("/:id", c.ProductHandler.GetProductByID)
 	}
+
+	// Transaction Endpoints (Protected)
+	if c.TransactionHandler != nil {
+		transactions := api.Group("/transactions", middleware.JWTMiddleware())
+
+		// Buyer personal transaction endpoints
+		transactions.Post("/", c.TransactionHandler.CreateTransaction)
+		transactions.Get("/me", c.TransactionHandler.GetMyTransactions)
+		transactions.Get("/me/:id", c.TransactionHandler.GetMyTransactionByID)
+		transactions.Patch("/me/:id", c.TransactionHandler.UpdateTransactionStatus)
+
+		// Admin system-wide transaction endpoints
+		transactions.Get("/", middleware.AdminOnlyMiddleware(), c.TransactionHandler.GetAllTransactions)
+		transactions.Patch("/:id", middleware.AdminOnlyMiddleware(), c.TransactionHandler.UpdateTransactionStatus)
+	}
 }
