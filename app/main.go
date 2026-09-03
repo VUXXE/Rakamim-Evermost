@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"evermos-api/internal/infrastructure/container"
 	"evermos-api/internal/infrastructure/mysql"
 	httpserver "evermos-api/internal/server/http"
 	"github.com/gofiber/fiber/v2"
@@ -17,6 +18,7 @@ func main() {
 		log.Println("Note: .env file not found, reading from environment variables")
 	}
 
+	var appContainer *container.Container
 	// Connect to Database
 	dbConfig := mysql.LoadConfigFromEnv()
 	db, err := mysql.Connect(dbConfig)
@@ -27,6 +29,7 @@ func main() {
 		if err := mysql.AutoMigrate(db); err != nil {
 			log.Fatalf("Auto-migration failed: %v", err)
 		}
+		appContainer = container.SetupContainer(db)
 	}
 
 	// Initialize Fiber App (10MB body limit for image uploads)
@@ -37,7 +40,8 @@ func main() {
 
 	// Setup Routes
 	httpserver.SetupRoutes(httpserver.RouterConfig{
-		App: app,
+		App:       app,
+		Container: appContainer,
 	})
 
 	port := os.Getenv("APP_HTTPPORT")
