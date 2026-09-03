@@ -27,6 +27,7 @@ type Container struct {
 	CategoryUseCase    usecase.CategoryUseCase
 	ProductUseCase     usecase.ProductUseCase
 	TransactionUseCase usecase.TransactionUseCase
+	RegionUseCase      usecase.RegionUseCase
 
 	// Handlers
 	AuthHandler        *handler.AuthHandler
@@ -37,6 +38,7 @@ type Container struct {
 	ProductHandler     *handler.ProductHandler
 	TransactionHandler *handler.TransactionHandler
 	SwaggerHandler     *handler.SwaggerHandler
+	RegionHandler      *handler.RegionHandler
 }
 
 func SetupContainer(db *gorm.DB) *Container {
@@ -57,6 +59,7 @@ func SetupContainer(db *gorm.DB) *Container {
 	categoryUseCase := usecase.NewCategoryUseCase(categoryRepo)
 	productUseCase := usecase.NewProductUseCase(productRepo, storeRepo, categoryRepo)
 	transactionUseCase := usecase.NewTransactionUseCase(db, transactionRepo, productLogRepo, productRepo, addressRepo)
+	regionUseCase := usecase.NewRegionUseCase()
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authUseCase)
@@ -67,6 +70,7 @@ func SetupContainer(db *gorm.DB) *Container {
 	productHandler := handler.NewProductHandler(productUseCase)
 	transactionHandler := handler.NewTransactionHandler(transactionUseCase)
 	swaggerHandler := handler.NewSwaggerHandler()
+	regionHandler := handler.NewRegionHandler(regionUseCase)
 
 	return &Container{
 		DB:                 db,
@@ -84,6 +88,7 @@ func SetupContainer(db *gorm.DB) *Container {
 		CategoryUseCase:    categoryUseCase,
 		ProductUseCase:     productUseCase,
 		TransactionUseCase: transactionUseCase,
+		RegionUseCase:      regionUseCase,
 		AuthHandler:        authHandler,
 		UserHandler:        userHandler,
 		StoreHandler:       storeHandler,
@@ -92,5 +97,6 @@ func SetupContainer(db *gorm.DB) *Container {
 		ProductHandler:     productHandler,
 		TransactionHandler: transactionHandler,
 		SwaggerHandler:     swaggerHandler,
+		RegionHandler:      regionHandler,
 	}
 }

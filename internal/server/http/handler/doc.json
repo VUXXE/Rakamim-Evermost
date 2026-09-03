@@ -689,6 +689,55 @@
           "200": { "description": "Status updated" }
         }
       }
+    },
+    "/api/v1/regions/provinces": {
+      "get": {
+        "tags": ["Regions"],
+        "summary": "List all Indonesian provinces (EMSifa External API)",
+        "responses": {
+          "200": { "description": "List of provinces" },
+          "502": { "description": "Bad Gateway - External API error" }
+        }
+      }
+    },
+    "/api/v1/regions/regencies/{province_id}": {
+      "get": {
+        "tags": ["Regions"],
+        "summary": "List regencies / cities by province ID (EMSifa External API)",
+        "parameters": [
+          { "name": "province_id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "32" }
+        ],
+        "responses": {
+          "200": { "description": "List of regencies / cities" },
+          "502": { "description": "Bad Gateway" }
+        }
+      }
+    },
+    "/api/v1/regions/districts/{regency_id}": {
+      "get": {
+        "tags": ["Regions"],
+        "summary": "List districts by regency ID (EMSifa External API)",
+        "parameters": [
+          { "name": "regency_id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "3273" }
+        ],
+        "responses": {
+          "200": { "description": "List of districts" },
+          "502": { "description": "Bad Gateway" }
+        }
+      }
+    },
+    "/api/v1/regions/villages/{district_id}": {
+      "get": {
+        "tags": ["Regions"],
+        "summary": "List villages by district ID (EMSifa External API)",
+        "parameters": [
+          { "name": "district_id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "3273010" }
+        ],
+        "responses": {
+          "200": { "description": "List of villages" },
+          "502": { "description": "Bad Gateway" }
+        }
+      }
     }
   }
 }

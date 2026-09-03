@@ -502,7 +502,84 @@
 			]
 		},
 		{
-			"name": "5. Kategori Produk (RBAC Admin)",
+			"name": "5. Wilayah Indonesia (EMSifa External API)",
+			"description": "Modul integrasi API eksternal resmi EMSifa Wilayah Indonesia (https://emsifa.github.io/api-wilayah-indonesia/) untuk penyediaan master data Provinsi, Kabupaten/Kota, Kecamatan, dan Kelurahan/Desa. Dilengkapi dengan in-memory caching untuk kecepatan respon maksimal.",
+			"item": [
+				{
+					"name": "Daftar Semua Provinsi (Provinces)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/regions/provinces",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"regions",
+								"provinces"
+							]
+						},
+						"description": "### 🇮🇩 Daftar Semua Provinsi di Indonesia\n\nMengambil seluruh data provinsi di Indonesia dari API eksternal EMSifa. Respon di-cache di memori agar cepat."
+					}
+				},
+				{
+					"name": "Daftar Kabupaten/Kota (Regencies)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/regions/regencies/32",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"regions",
+								"regencies",
+								"32"
+							]
+						},
+						"description": "### 🏙️ Daftar Kabupaten/Kota berdasarkan ID Provinsi\n\nMengambil daftar kabupaten/kota (misal: Jawa Barat dengan ID `32`)."
+					}
+				},
+				{
+					"name": "Daftar Kecamatan (Districts)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/regions/districts/3273",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"regions",
+								"districts",
+								"3273"
+							]
+						},
+						"description": "### 🏘️ Daftar Kecamatan berdasarkan ID Kabupaten/Kota\n\nMengambil daftar kecamatan (misal: Kota Bandung dengan ID `3273`)."
+					}
+				},
+				{
+					"name": "Daftar Kelurahan/Desa (Villages)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/regions/villages/3273010",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"regions",
+								"villages",
+								"3273010"
+							]
+						},
+						"description": "### 🏡 Daftar Kelurahan/Desa berdasarkan ID Kecamatan\n\nMengambil daftar kelurahan/desa (misal: Kecamatan Coblong dengan ID `3273010`)."
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Kategori Produk (RBAC Admin)",
 			"description": "Modul taksonomi dan kategori katalog produk. Operasi penambahan, pengubahan, dan penghapusan kategori produk dibatasi secara ketat hanya untuk akun Administrator (`is_admin == true`).",
 			"item": [
 				{
@@ -637,7 +714,7 @@
 			]
 		},
 		{
-			"name": "6. Manajemen Produk",
+			"name": "7. Manajemen Produk",
 			"description": "Modul katalog produk e-commerce. Mendukung pembuatan produk dengan unggah gambar file multipart/form-data, penelusuran katalog publik dengan filter pencarian & sortir, serta isolasi kepemilikan produk merchant.",
 			"item": [
 				{
@@ -870,7 +947,7 @@
 			]
 		},
 		{
-			"name": "7. Transaksi & Checkout Engine",
+			"name": "8. Transaksi & Checkout Engine",
 			"description": "Engine pemrosesan checkout pesanan berstandar ACID dengan pessimistic row locking, pemotongan kuantitas inventaris secara atomik, dan pencatatan snapshot harga/kuantitas historis yang immutable pada product_logs.",
 			"item": [
 				{
@@ -1036,7 +1113,7 @@
 			]
 		},
 		{
-			"name": "8. Dokumentasi & Swagger UI",
+			"name": "9. Dokumentasi & Swagger UI",
 			"description": "Endpoint eksplorasi interaktif dan pemeriksaan kesehatan (health check) server backend.",
 			"item": [
 				{

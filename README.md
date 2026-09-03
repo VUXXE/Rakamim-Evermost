@@ -36,6 +36,7 @@ Aplikasi ini mencakup fitur lengkap mulai dari Autentikasi, Pembuatan Toko Otoma
 | **API Client Docs**| Postman Collection v2.1.0 (Lengkap Bahasa Indonesia) |
 | **Testing** | `testify/assert` + `testify/require` + Go Race Detector |
 | **Administrative Standard** | Standar Kode & Wilayah Indonesia (Provinsi, Kabupaten, Kecamatan, Kelurahan) |
+| **External API** | [EMSifa Wilayah Indonesia](https://emsifa.github.io/api-wilayah-indonesia/) (HTTP Client + In-Memory Cache) |
 
 ---
 
@@ -76,6 +77,7 @@ Penerapan **Clean Architecture** memisahkan *Business Logic* dengan kerangka eks
 │       ├── category_e2e_test.go
 │       ├── product_e2e_test.go
 │       ├── transaction_e2e_test.go
+│       ├── region_e2e_test.go
 │       └── swagger_e2e_test.go
 ├── uploads/
 │   └── products/                   # Penyimpanan fisik file gambar produk
@@ -99,6 +101,8 @@ Penerapan **Clean Architecture** memisahkan *Business Logic* dengan kerangka eks
 - **Validasi Keunikan**: `email` dan `phone` wajib unik dan divalidasi ganda di level database dan aplikasi.
 
 ### Modul 2: Wilayah & Alamat Pengiriman
+- **EMSifa External API Integration**: Mengambil master data resmi wilayah Indonesia secara langsung dari [EMSifa Wilayah Indonesia API](https://emsifa.github.io/api-wilayah-indonesia/) (`provinces`, `regencies`, `districts`, `villages`).
+- **In-Memory Caching & Resilient Timeout**: Respon dari API eksternal disimpan di memory cache dengan proteksi `sync.RWMutex` untuk performa tinggi sub-milidetik, serta dilengkapi proteksi timeout (5 detik).
 - **Standar Hierarki Wilayah Indonesia**: Menyimpan data resmi `provinsi`, `provinsi_id`, `kabupaten`, `kabupaten_id`, `kecamatan`, `kecamatan_id`, `kelurahan`, `kelurahan_id`.
 - **Atomic Default Rebalancing**: Menandai sebuah alamat sebagai default (`is_default = true`) secara otomatis menonaktifkan status default pada alamat-alamat lama dalam satu transaksi database.
 - **Isolasi Alamat**: Pengguna hanya dapat melihat, mengedit, dan menghapus alamat miliknya sendiri (`404 Not Found` jika mengakses alamat orang lain).
@@ -293,6 +297,14 @@ Seluruh endpoint terpusat pada base path `/api/v1`:
 | `GET` | `/api/v1/transactions/me` | Riwayat pesanan sendiri |
 | `GET` | `/api/v1/transactions/me/:id`| Detail pesanan & log produk historis |
 | `PATCH`| `/api/v1/transactions/me/:id`| Perbarui status pesanan (`completed`/`cancelled`) |
+
+### Wilayah Indonesia (EMSifa External API)
+| Method | Rute | Deskripsi |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/regions/provinces` | List seluruh provinsi di Indonesia |
+| `GET` | `/api/v1/regions/regencies/:province_id` | List kabupaten/kota berdasarkan ID provinsi |
+| `GET` | `/api/v1/regions/districts/:regency_id` | List kecamatan berdasarkan ID kabupaten/kota |
+| `GET` | `/api/v1/regions/villages/:district_id` | List kelurahan/desa berdasarkan ID kecamatan |
 
 ### Admin Routes (`is_admin == true`)
 | Method | Rute | Deskripsi |

@@ -133,4 +133,13 @@ func SetupRoutes(cfg RouterConfig) {
 		transactions.Get("/", middleware.AdminOnlyMiddleware(), c.TransactionHandler.GetAllTransactions)
 		transactions.Patch("/:id", middleware.AdminOnlyMiddleware(), c.TransactionHandler.UpdateTransactionStatus)
 	}
+
+	// Indonesian Administrative Regions (EMSifa External API Integration)
+	if c.RegionHandler != nil {
+		regions := api.Group("/regions")
+		regions.Get("/provinces", c.RegionHandler.GetProvinces)
+		regions.Get("/regencies/:province_id", c.RegionHandler.GetRegencies)
+		regions.Get("/districts/:regency_id", c.RegionHandler.GetDistricts)
+		regions.Get("/villages/:district_id", c.RegionHandler.GetVillages)
+	}
 }
