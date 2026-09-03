@@ -1,0 +1,694 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Evermos E-Commerce RESTful API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token in the format: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "BaseResponse": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "success" },
+          "data": { "type": "object" },
+          "error": { "type": "string", "nullable": true }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["name", "email", "phone", "password"],
+        "properties": {
+          "name": { "type": "string", "example": "Budi Santoso" },
+          "email": { "type": "string", "format": "email", "example": "budi@example.com" },
+          "phone": { "type": "string", "example": "081234567890" },
+          "password": { "type": "string", "format": "password", "example": "Password123!" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "budi@example.com" },
+          "password": { "type": "string", "format": "password", "example": "Password123!" }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "Budi Santoso Updated" },
+          "email": { "type": "string", "format": "email", "example": "budi_new@example.com" },
+          "phone": { "type": "string", "example": "081299998888" },
+          "password": { "type": "string", "format": "password", "example": "NewSecretPassword123!" }
+        }
+      },
+      "CreateStoreRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "example": "Toko Berkah Budi" },
+          "address": { "type": "string", "example": "Jl. Merdeka No. 10, Bandung" },
+          "phone": { "type": "string", "example": "081234567890" }
+        }
+      },
+      "UpdateStoreRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "Toko Berkah Mandiri" },
+          "address": { "type": "string", "example": "Jl. Asia Afrika No. 20, Bandung" },
+          "phone": { "type": "string", "example": "081234567890" }
+        }
+      },
+      "CreateAddressRequest": {
+        "type": "object",
+        "required": ["judul_alamat", "penerima_nama", "penerima_phone", "provinsi", "provinsi_id", "kabupaten", "kabupaten_id", "kecamatan", "kecamatan_id", "kelurahan", "kelurahan_id", "detail_alamat"],
+        "properties": {
+          "judul_alamat": { "type": "string", "example": "Rumah Bandung" },
+          "penerima_nama": { "type": "string", "example": "Budi Santoso" },
+          "penerima_phone": { "type": "string", "example": "081234567890" },
+          "provinsi": { "type": "string", "example": "Jawa Barat" },
+          "provinsi_id": { "type": "string", "example": "32" },
+          "kabupaten": { "type": "string", "example": "Bandung" },
+          "kabupaten_id": { "type": "string", "example": "3273" },
+          "kecamatan": { "type": "string", "example": "Coblong" },
+          "kecamatan_id": { "type": "string", "example": "327301" },
+          "kelurahan": { "type": "string", "example": "Dago" },
+          "kelurahan_id": { "type": "string", "example": "3273011001" },
+          "detail_alamat": { "type": "string", "example": "Jl. Dago No. 12 RT 01 RW 02" },
+          "is_default": { "type": "boolean", "example": true }
+        }
+      },
+      "UpdateAddressRequest": {
+        "type": "object",
+        "properties": {
+          "judul_alamat": { "type": "string", "example": "Rumah Dago Baru" },
+          "penerima_nama": { "type": "string", "example": "Budi S." },
+          "penerima_phone": { "type": "string", "example": "081299998888" },
+          "detail_alamat": { "type": "string", "example": "Jl. Dago No. 15" },
+          "is_default": { "type": "boolean", "example": true }
+        }
+      },
+      "CategoryRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "example": "Fashion Muslim" }
+        }
+      },
+      "CheckoutItem": {
+        "type": "object",
+        "required": ["product_id", "quantity"],
+        "properties": {
+          "product_id": { "type": "integer", "example": 1 },
+          "quantity": { "type": "integer", "example": 2 }
+        }
+      },
+      "CreateTransactionRequest": {
+        "type": "object",
+        "required": ["address_id", "products"],
+        "properties": {
+          "address_id": { "type": "integer", "example": 1 },
+          "products": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CheckoutItem" }
+          }
+        }
+      },
+      "UpdateTransactionStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "type": "string", "enum": ["pending", "completed", "cancelled"], "example": "completed" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register new user & automatically provision merchant store",
+        "description": "Registers a new user account. Enforces unique email and phone. Atomically creates a Store named '{UserName}'s Store'.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User and Store successfully registered",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BaseResponse" }
+              }
+            }
+          },
+          "400": { "description": "Validation error or duplicate email/phone" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User login & JWT issuance",
+        "description": "Authenticates user via bcrypt password comparison and issues signed JWT Bearer token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful, returns JWT token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BaseResponse" }
+              }
+            }
+          },
+          "400": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get authenticated user profile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "User profile data" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "patch": {
+        "tags": ["Users"],
+        "summary": "Update authenticated user profile",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Users"],
+        "summary": "Delete authenticated user account (soft delete)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Account deleted successfully" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List all registered users (Admin Only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "List of users" },
+          "403": { "description": "Forbidden - requires is_admin == true" }
+        }
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user details by ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "User details" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/api/v1/stores/me": {
+      "get": {
+        "tags": ["Stores"],
+        "summary": "Get authenticated user's store",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Store profile" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/stores": {
+      "get": {
+        "tags": ["Stores"],
+        "summary": "List all stores (Public)",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "List of stores" }
+        }
+      },
+      "post": {
+        "tags": ["Stores"],
+        "summary": "Create store manually (if not already provisioned)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateStoreRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Store created" },
+          "400": { "description": "User already has a store" }
+        }
+      }
+    },
+    "/api/v1/stores/{id}": {
+      "get": {
+        "tags": ["Stores"],
+        "summary": "Get store by ID (Public)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Store details" },
+          "404": { "description": "Store not found" }
+        }
+      },
+      "patch": {
+        "tags": ["Stores"],
+        "summary": "Update owned store",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateStoreRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Store updated" },
+          "403": { "description": "Forbidden - attempting to edit another merchant's store" }
+        }
+      },
+      "delete": {
+        "tags": ["Stores"],
+        "summary": "Delete owned store",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Store deleted" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/v1/addresses": {
+      "post": {
+        "tags": ["Addresses"],
+        "summary": "Create shipping address",
+        "description": "Creates address conforming to Indonesian regional hierarchy. If is_default is true, prior defaults are automatically unset.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAddressRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Address created" },
+          "400": { "description": "Validation error" }
+        }
+      },
+      "get": {
+        "tags": ["Addresses"],
+        "summary": "Get authenticated user's addresses",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "User address list" }
+        }
+      }
+    },
+    "/api/v1/addresses/{id}": {
+      "get": {
+        "tags": ["Addresses"],
+        "summary": "Get address by ID (Strict Owner Only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Address details" },
+          "404": { "description": "Address not found or unauthorized access" }
+        }
+      },
+      "patch": {
+        "tags": ["Addresses"],
+        "summary": "Update owned address",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateAddressRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Address updated" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Addresses"],
+        "summary": "Delete owned address",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Address deleted" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "List product categories (Public)",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Category list" }
+        }
+      },
+      "post": {
+        "tags": ["Categories"],
+        "summary": "Create category (Admin Only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CategoryRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Category created" },
+          "403": { "description": "Forbidden - requires is_admin == true" }
+        }
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "Get category by ID (Public)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Category detail" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "patch": {
+        "tags": ["Categories"],
+        "summary": "Update category (Admin Only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CategoryRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Category updated" },
+          "403": { "description": "Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["Categories"],
+        "summary": "Delete category (Admin Only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Category deleted" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Browse catalog with filtering and search (Public)",
+        "parameters": [
+          { "name": "search", "in": "query", "description": "Filter by name substring", "schema": { "type": "string" } },
+          { "name": "category_id", "in": "query", "description": "Filter by category", "schema": { "type": "integer" } },
+          { "name": "store_id", "in": "query", "description": "Filter by store", "schema": { "type": "integer" } },
+          { "name": "sort", "in": "query", "description": "Sort order", "schema": { "type": "string", "enum": ["price_asc", "price_desc", "newest"], "default": "newest" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Filtered product catalog" }
+        }
+      },
+      "post": {
+        "tags": ["Products"],
+        "summary": "Create product with multipart image upload",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["category_id", "name", "price", "quantity"],
+                "properties": {
+                  "category_id": { "type": "integer", "example": 1 },
+                  "name": { "type": "string", "example": "Kemeja Batik Katun" },
+                  "description": { "type": "string", "example": "Batik premium katun" },
+                  "price": { "type": "number", "example": 150000 },
+                  "quantity": { "type": "integer", "example": 20 },
+                  "image": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Product created" },
+          "400": { "description": "Validation error" }
+        }
+      }
+    },
+    "/api/v1/products/me": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Get authenticated merchant's products",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Store products" }
+        }
+      }
+    },
+    "/api/v1/products/{id}": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Get product details by ID (Public)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Product details" },
+          "404": { "description": "Product not found" }
+        }
+      },
+      "patch": {
+        "tags": ["Products"],
+        "summary": "Update owned product (Zero-Trust Merchant Isolation)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category_id": { "type": "integer" },
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "price": { "type": "number" },
+                  "quantity": { "type": "integer" },
+                  "image": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Product updated" },
+          "403": { "description": "Forbidden - attempting to update product of another merchant" }
+        }
+      },
+      "delete": {
+        "tags": ["Products"],
+        "summary": "Delete owned product",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Product deleted" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/v1/transactions": {
+      "post": {
+        "tags": ["Transactions"],
+        "summary": "Checkout order (ACID Transaction with Row Locking)",
+        "description": "Executes checkout in atomic database transaction: verifies delivery address ownership, sorts items to prevent deadlock, locks product rows (FOR UPDATE), deducts inventory, generates invoice number, and creates immutable snapshot records in product_logs.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTransactionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Transaction successfully completed" },
+          "400": { "description": "Insufficient stock or address invalid" }
+        }
+      },
+      "get": {
+        "tags": ["Transactions"],
+        "summary": "List all transactions (Admin Only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["pending", "completed", "cancelled"] } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Transactions list" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/v1/transactions/me": {
+      "get": {
+        "tags": ["Transactions"],
+        "summary": "Get authenticated user's order history",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Purchase history" }
+        }
+      }
+    },
+    "/api/v1/transactions/me/{id}": {
+      "get": {
+        "tags": ["Transactions"],
+        "summary": "Get authenticated user's order detail with immutable product_logs",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Transaction detail with line-item snapshot logs" },
+          "404": { "description": "Transaction not found or belongs to another user" }
+        }
+      },
+      "patch": {
+        "tags": ["Transactions"],
+        "summary": "Update order status (e.g., cancelled or completed)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateTransactionStatusRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Status updated" }
+        }
+      }
+    }
+  }
+}

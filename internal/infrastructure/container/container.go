@@ -36,6 +36,7 @@ type Container struct {
 	CategoryHandler    *handler.CategoryHandler
 	ProductHandler     *handler.ProductHandler
 	TransactionHandler *handler.TransactionHandler
+	SwaggerHandler     *handler.SwaggerHandler
 }
 
 func SetupContainer(db *gorm.DB) *Container {
@@ -65,6 +66,7 @@ func SetupContainer(db *gorm.DB) *Container {
 	categoryHandler := handler.NewCategoryHandler(categoryUseCase)
 	productHandler := handler.NewProductHandler(productUseCase)
 	transactionHandler := handler.NewTransactionHandler(transactionUseCase)
+	swaggerHandler := handler.NewSwaggerHandler()
 
 	return &Container{
 		DB:                 db,
@@ -89,5 +91,6 @@ func SetupContainer(db *gorm.DB) *Container {
 		CategoryHandler:    categoryHandler,
 		ProductHandler:     productHandler,
 		TransactionHandler: transactionHandler,
+		SwaggerHandler:     swaggerHandler,
 	}
 }

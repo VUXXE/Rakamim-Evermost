@@ -39,6 +39,15 @@ func SetupRoutes(cfg RouterConfig) {
 		return
 	}
 
+	// Interactive Swagger UI Documentation
+	if c.SwaggerHandler != nil {
+		app.Get("/swagger", c.SwaggerHandler.GetSwaggerUI)
+		app.Get("/swagger/doc.json", c.SwaggerHandler.GetSwaggerJSON)
+		app.Get("/docs", func(ctx *fiber.Ctx) error {
+			return ctx.Redirect("/swagger")
+		})
+	}
+
 	// Auth Endpoints (Public)
 	if c.AuthHandler != nil {
 		auth := api.Group("/auth")
