@@ -70,4 +70,14 @@ func SetupRoutes(cfg RouterConfig) {
 		stores.Get("/", c.StoreHandler.GetAllStores)
 		stores.Get("/:id", c.StoreHandler.GetStoreByID)
 	}
+
+	// Address Endpoints (Protected: Bearer Token Required)
+	if c.AddressHandler != nil {
+		addresses := api.Group("/addresses", middleware.JWTMiddleware())
+		addresses.Post("/", c.AddressHandler.CreateAddress)
+		addresses.Get("/", c.AddressHandler.GetMyAddresses)
+		addresses.Get("/:id", c.AddressHandler.GetAddressByID)
+		addresses.Patch("/:id", c.AddressHandler.UpdateAddress)
+		addresses.Delete("/:id", c.AddressHandler.DeleteAddress)
+	}
 }
