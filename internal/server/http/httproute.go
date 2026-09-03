@@ -80,4 +80,18 @@ func SetupRoutes(cfg RouterConfig) {
 		addresses.Patch("/:id", c.AddressHandler.UpdateAddress)
 		addresses.Delete("/:id", c.AddressHandler.DeleteAddress)
 	}
+
+	// Category Endpoints
+	if c.CategoryHandler != nil {
+		categories := api.Group("/categories")
+
+		// Admin-Only Category Management Routes
+		categories.Post("/", middleware.JWTMiddleware(), middleware.AdminOnlyMiddleware(), c.CategoryHandler.CreateCategory)
+		categories.Patch("/:id", middleware.JWTMiddleware(), middleware.AdminOnlyMiddleware(), c.CategoryHandler.UpdateCategory)
+		categories.Delete("/:id", middleware.JWTMiddleware(), middleware.AdminOnlyMiddleware(), c.CategoryHandler.DeleteCategory)
+
+		// Public Category Browsing Routes
+		categories.Get("/", c.CategoryHandler.GetAllCategories)
+		categories.Get("/:id", c.CategoryHandler.GetCategoryByID)
+	}
 }
