@@ -32,7 +32,7 @@ func TestTransactionHandler_E2E(t *testing.T) {
 	bodySeller, _ := json.Marshal(regSeller)
 	reqRegSeller := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(bodySeller))
 	reqRegSeller.Header.Set("Content-Type", "application/json")
-	respRegSeller, err := app.Test(reqRegSeller)
+	respRegSeller, err := testReq(app, reqRegSeller)
 	require.NoError(t, err)
 
 	var resSeller struct {
@@ -53,7 +53,7 @@ func TestTransactionHandler_E2E(t *testing.T) {
 	reqCat := httptest.NewRequest(http.MethodPost, "/api/v1/categories", bytes.NewReader(catBody))
 	reqCat.Header.Set("Content-Type", "application/json")
 	reqCat.Header.Set("Authorization", "Bearer "+adminToken)
-	respCat, err := app.Test(reqCat)
+	respCat, err := testReq(app, reqCat)
 	require.NoError(t, err)
 
 	var resCat struct {
@@ -74,7 +74,7 @@ func TestTransactionHandler_E2E(t *testing.T) {
 	reqProd := httptest.NewRequest(http.MethodPost, "/api/v1/products", bytes.NewReader(bodyProd))
 	reqProd.Header.Set("Content-Type", "application/json")
 	reqProd.Header.Set("Authorization", "Bearer "+sellerToken)
-	respProd, err := app.Test(reqProd)
+	respProd, err := testReq(app, reqProd)
 	require.NoError(t, err)
 
 	var resProd struct {
@@ -95,7 +95,7 @@ func TestTransactionHandler_E2E(t *testing.T) {
 	bodyBuyer, _ := json.Marshal(regBuyer)
 	reqRegBuyer := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(bodyBuyer))
 	reqRegBuyer.Header.Set("Content-Type", "application/json")
-	respRegBuyer, err := app.Test(reqRegBuyer)
+	respRegBuyer, err := testReq(app, reqRegBuyer)
 	require.NoError(t, err)
 
 	var resBuyer struct {
@@ -124,7 +124,7 @@ func TestTransactionHandler_E2E(t *testing.T) {
 	reqAddr := httptest.NewRequest(http.MethodPost, "/api/v1/addresses", bytes.NewReader(bodyAddr))
 	reqAddr.Header.Set("Content-Type", "application/json")
 	reqAddr.Header.Set("Authorization", "Bearer "+buyerToken)
-	respAddr, err := app.Test(reqAddr)
+	respAddr, err := testReq(app, reqAddr)
 	require.NoError(t, err)
 
 	var resAddr struct {
@@ -147,7 +147,7 @@ func TestTransactionHandler_E2E(t *testing.T) {
 	reqTx := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", bytes.NewReader(bodyTx))
 	reqTx.Header.Set("Content-Type", "application/json")
 	reqTx.Header.Set("Authorization", "Bearer "+buyerToken)
-	respTx, err := app.Test(reqTx)
+	respTx, err := testReq(app, reqTx)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, respTx.StatusCode)
 
@@ -163,14 +163,14 @@ func TestTransactionHandler_E2E(t *testing.T) {
 	// 7. Buyer gets personal transactions (GET /api/v1/transactions/me)
 	reqMyTx := httptest.NewRequest(http.MethodGet, "/api/v1/transactions/me", nil)
 	reqMyTx.Header.Set("Authorization", "Bearer "+buyerToken)
-	respMyTx, err := app.Test(reqMyTx)
+	respMyTx, err := testReq(app, reqMyTx)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respMyTx.StatusCode)
 
 	// 8. Seller (another user) tries to view Buyer's transaction -> MUST RETURN 404
 	reqTamper := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/transactions/me/%d", transactionID), nil)
 	reqTamper.Header.Set("Authorization", "Bearer "+sellerToken)
-	respTamper, err := app.Test(reqTamper)
+	respTamper, err := testReq(app, reqTamper)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, respTamper.StatusCode)
 
@@ -180,14 +180,14 @@ func TestTransactionHandler_E2E(t *testing.T) {
 	reqStatus := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/v1/transactions/me/%d", transactionID), bytes.NewReader(bodyStatus))
 	reqStatus.Header.Set("Content-Type", "application/json")
 	reqStatus.Header.Set("Authorization", "Bearer "+buyerToken)
-	respStatus, err := app.Test(reqStatus)
+	respStatus, err := testReq(app, reqStatus)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respStatus.StatusCode)
 
 	// 10. Admin views all transactions (GET /api/v1/transactions)
 	reqAdminList := httptest.NewRequest(http.MethodGet, "/api/v1/transactions", nil)
 	reqAdminList.Header.Set("Authorization", "Bearer "+adminToken)
-	respAdminList, err := app.Test(reqAdminList)
+	respAdminList, err := testReq(app, reqAdminList)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respAdminList.StatusCode)
 }

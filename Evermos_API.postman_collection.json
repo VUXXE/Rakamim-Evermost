@@ -1,0 +1,428 @@
+{
+	"info": {
+		"_postman_id": "8f5a6b7c-3d2e-4f1a-9b8c-0e1f2a3b4c5d",
+		"name": "Evermos E-Commerce API",
+		"description": "Production Postman Collection for Evermos Multi-Tenant E-Commerce REST API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Register User & Auto-Provision Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Budi Santoso\",\n  \"email\": \"budi@example.com\",\n  \"phone\": \"081234567890\",\n  \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"budi@example.com\",\n  \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "login"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Users",
+			"item": [
+				{
+					"name": "Get Authenticated Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["users", "me"]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Budi Santoso Updated\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["users", "me"]
+						}
+					}
+				},
+				{
+					"name": "Delete Account",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["users", "me"]
+						}
+					}
+				},
+				{
+					"name": "List Users (Admin Only)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/users?limit=10&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["users"],
+							"query": [
+								{ "key": "limit", "value": "10" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Stores",
+			"item": [
+				{
+					"name": "Get My Store",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/stores/me",
+							"host": ["{{base_url}}"],
+							"path": ["stores", "me"]
+						}
+					}
+				},
+				{
+					"name": "Update My Store",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Budi Toko Berkah\",\n  \"address\": \"Bandung\",\n  \"phone\": \"081234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/stores/1",
+							"host": ["{{base_url}}"],
+							"path": ["stores", "1"]
+						}
+					}
+				},
+				{
+					"name": "List All Stores (Public)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/stores?limit=10&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["stores"],
+							"query": [
+								{ "key": "limit", "value": "10" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Addresses",
+			"item": [
+				{
+					"name": "Create Address",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"judul_alamat\": \"Rumah Bandung\",\n  \"penerima_nama\": \"Budi Santoso\",\n  \"penerima_phone\": \"081234567890\",\n  \"provinsi\": \"Jawa Barat\",\n  \"provinsi_id\": \"32\",\n  \"kabupaten\": \"Bandung\",\n  \"kabupaten_id\": \"3273\",\n  \"kecamatan\": \"Coblong\",\n  \"kecamatan_id\": \"327301\",\n  \"kelurahan\": \"Dago\",\n  \"kelurahan_id\": \"3273011001\",\n  \"detail_alamat\": \"Jl. Dago No. 12\",\n  \"is_default\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/addresses",
+							"host": ["{{base_url}}"],
+							"path": ["addresses"]
+						}
+					}
+				},
+				{
+					"name": "Get My Addresses",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/addresses?limit=10&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["addresses"],
+							"query": [
+								{ "key": "limit", "value": "10" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Categories (Admin RBAC)",
+			"item": [
+				{
+					"name": "Create Category (Admin Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Fashion Pria\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/categories",
+							"host": ["{{base_url}}"],
+							"path": ["categories"]
+						}
+					}
+				},
+				{
+					"name": "List All Categories (Public)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/categories?limit=10&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["categories"],
+							"query": [
+								{ "key": "limit", "value": "10" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Products",
+			"item": [
+				{
+					"name": "Create Product (Multipart Upload)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "category_id", "value": "1", "type": "text" },
+								{ "key": "name", "value": "Kemeja Batik Katun", "type": "text" },
+								{ "key": "description", "value": "Kemeja batik katun premium", "type": "text" },
+								{ "key": "price", "value": "175000", "type": "text" },
+								{ "key": "quantity", "value": "20", "type": "text" },
+								{ "key": "image", "type": "file", "src": "" }
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/products",
+							"host": ["{{base_url}}"],
+							"path": ["products"]
+						}
+					}
+				},
+				{
+					"name": "Get My Store Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/products/me",
+							"host": ["{{base_url}}"],
+							"path": ["products", "me"]
+						}
+					}
+				},
+				{
+					"name": "Browse Public Catalog (Filtered & Sorted)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/products?search=Batik&category_id=1&sort=newest&limit=10&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["products"],
+							"query": [
+								{ "key": "search", "value": "Batik" },
+								{ "key": "category_id", "value": "1" },
+								{ "key": "sort", "value": "newest" },
+								{ "key": "limit", "value": "10" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Transactions",
+			"item": [
+				{
+					"name": "Checkout Order (Atomic Transaction)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"address_id\": 1,\n  \"products\": [\n    {\n      \"product_id\": 1,\n      \"quantity\": 2\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/transactions",
+							"host": ["{{base_url}}"],
+							"path": ["transactions"]
+						}
+					}
+				},
+				{
+					"name": "Get My Purchase History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/transactions/me?limit=10&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["transactions", "me"],
+							"query": [
+								{ "key": "limit", "value": "10" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get My Transaction Detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/transactions/me/1",
+							"host": ["{{base_url}}"],
+							"path": ["transactions", "me", "1"]
+						}
+					}
+				},
+				{
+					"name": "Update Transaction Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"completed\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/transactions/me/1",
+							"host": ["{{base_url}}"],
+							"path": ["transactions", "me", "1"]
+						}
+					}
+				},
+				{
+					"name": "List All Transactions (Admin Only)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"url": {
+							"raw": "{{base_url}}/transactions?status=pending&limit=10&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["transactions"],
+							"query": [
+								{ "key": "status", "value": "pending" },
+								{ "key": "limit", "value": "10" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}

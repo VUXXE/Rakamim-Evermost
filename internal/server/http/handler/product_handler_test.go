@@ -34,7 +34,7 @@ func TestProductHandler_MultipartUpload_AndIsolation_E2E(t *testing.T) {
 	bodyA, _ := json.Marshal(regPayloadA)
 	regReqA := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(bodyA))
 	regReqA.Header.Set("Content-Type", "application/json")
-	regRespA, err := app.Test(regReqA)
+	regRespA, err := testReq(app, regReqA)
 	require.NoError(t, err)
 
 	var regResA struct {
@@ -56,7 +56,7 @@ func TestProductHandler_MultipartUpload_AndIsolation_E2E(t *testing.T) {
 	bodyB, _ := json.Marshal(regPayloadB)
 	regReqB := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(bodyB))
 	regReqB.Header.Set("Content-Type", "application/json")
-	regRespB, err := app.Test(regReqB)
+	regRespB, err := testReq(app, regReqB)
 	require.NoError(t, err)
 
 	var regResB struct {
@@ -76,7 +76,7 @@ func TestProductHandler_MultipartUpload_AndIsolation_E2E(t *testing.T) {
 	createCatReq := httptest.NewRequest(http.MethodPost, "/api/v1/categories", bytes.NewReader(catBody))
 	createCatReq.Header.Set("Content-Type", "application/json")
 	createCatReq.Header.Set("Authorization", "Bearer "+adminToken)
-	catResp, err := app.Test(createCatReq)
+	catResp, err := testReq(app, createCatReq)
 	require.NoError(t, err)
 
 	var catRes struct {
@@ -103,7 +103,7 @@ func TestProductHandler_MultipartUpload_AndIsolation_E2E(t *testing.T) {
 	prodReq.Header.Set("Content-Type", mpWriter.FormDataContentType())
 	prodReq.Header.Set("Authorization", "Bearer "+tokenA)
 
-	prodResp, err := app.Test(prodReq)
+	prodResp, err := testReq(app, prodReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, prodResp.StatusCode)
 
@@ -124,27 +124,27 @@ func TestProductHandler_MultipartUpload_AndIsolation_E2E(t *testing.T) {
 	tamperReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/v1/products/%d", prodID), patchBuf)
 	tamperReq.Header.Set("Content-Type", mpPatch.FormDataContentType())
 	tamperReq.Header.Set("Authorization", "Bearer "+tokenB)
-	tamperResp, err := app.Test(tamperReq)
+	tamperResp, err := testReq(app, tamperReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, tamperResp.StatusCode)
 
 	// 6. Public user browses products with search & category filter
 	searchReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/products?search=Smartphone&category_id=%d&sort=price_desc", categoryID), nil)
-	searchResp, err := app.Test(searchReq)
+	searchResp, err := testReq(app, searchReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, searchResp.StatusCode)
 
 	// 7. Seller A views personal products via /api/v1/products/me
 	myProdsReq := httptest.NewRequest(http.MethodGet, "/api/v1/products/me", nil)
 	myProdsReq.Header.Set("Authorization", "Bearer "+tokenA)
-	myProdsResp, err := app.Test(myProdsReq)
+	myProdsResp, err := testReq(app, myProdsReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, myProdsResp.StatusCode)
 
 	// 8. Seller A deletes own product
 	delReq := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/v1/products/%d", prodID), nil)
 	delReq.Header.Set("Authorization", "Bearer "+tokenA)
-	delResp, err := app.Test(delReq)
+	delResp, err := testReq(app, delReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, delResp.StatusCode)
 

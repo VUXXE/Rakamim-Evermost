@@ -33,7 +33,7 @@ func TestCategoryHandler_AdminRBAC_E2E(t *testing.T) {
 	body, _ := json.Marshal(regPayload)
 	regReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(body))
 	regReq.Header.Set("Content-Type", "application/json")
-	regResp, err := app.Test(regReq)
+	regResp, err := testReq(app, regReq)
 	require.NoError(t, err)
 
 	var regRes struct {
@@ -51,7 +51,7 @@ func TestCategoryHandler_AdminRBAC_E2E(t *testing.T) {
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/categories", bytes.NewReader(catBody))
 	createReq.Header.Set("Content-Type", "application/json")
 	createReq.Header.Set("Authorization", "Bearer "+normalToken)
-	createResp, err := app.Test(createReq)
+	createResp, err := testReq(app, createReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, createResp.StatusCode)
 
@@ -63,7 +63,7 @@ func TestCategoryHandler_AdminRBAC_E2E(t *testing.T) {
 	adminCreateReq := httptest.NewRequest(http.MethodPost, "/api/v1/categories", bytes.NewReader(catBody))
 	adminCreateReq.Header.Set("Content-Type", "application/json")
 	adminCreateReq.Header.Set("Authorization", "Bearer "+adminToken)
-	adminCreateResp, err := app.Test(adminCreateReq)
+	adminCreateResp, err := testReq(app, adminCreateReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, adminCreateResp.StatusCode)
 
@@ -75,27 +75,27 @@ func TestCategoryHandler_AdminRBAC_E2E(t *testing.T) {
 
 	// 5. Public user (unauthenticated) can GET all categories
 	publicListReq := httptest.NewRequest(http.MethodGet, "/api/v1/categories?limit=10&offset=0", nil)
-	publicListResp, err := app.Test(publicListReq)
+	publicListResp, err := testReq(app, publicListReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, publicListResp.StatusCode)
 
 	// 6. Public user can GET category by ID
 	publicGetReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/categories/%d", catID), nil)
-	publicGetResp, err := app.Test(publicGetReq)
+	publicGetResp, err := testReq(app, publicGetReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, publicGetResp.StatusCode)
 
 	// 7. Normal user tries to DELETE category -> MUST FAIL with 403 Forbidden!
 	delReqNormal := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/v1/categories/%d", catID), nil)
 	delReqNormal.Header.Set("Authorization", "Bearer "+normalToken)
-	delRespNormal, err := app.Test(delReqNormal)
+	delRespNormal, err := testReq(app, delReqNormal)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, delRespNormal.StatusCode)
 
 	// 8. Admin user deletes category -> MUST SUCCEED with 200 OK
 	delReqAdmin := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/v1/categories/%d", catID), nil)
 	delReqAdmin.Header.Set("Authorization", "Bearer "+adminToken)
-	delRespAdmin, err := app.Test(delReqAdmin)
+	delRespAdmin, err := testReq(app, delReqAdmin)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, delRespAdmin.StatusCode)
 

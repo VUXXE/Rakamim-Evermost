@@ -32,7 +32,7 @@ func TestUserAndStoreHandler_E2E(t *testing.T) {
 	bodyA, _ := json.Marshal(regPayloadA)
 	regReqA := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(bodyA))
 	regReqA.Header.Set("Content-Type", "application/json")
-	regRespA, err := app.Test(regReqA)
+	regRespA, err := testReq(app, regReqA)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, regRespA.StatusCode)
 
@@ -55,7 +55,7 @@ func TestUserAndStoreHandler_E2E(t *testing.T) {
 	bodyB, _ := json.Marshal(regPayloadB)
 	regReqB := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(bodyB))
 	regReqB.Header.Set("Content-Type", "application/json")
-	regRespB, err := app.Test(regReqB)
+	regRespB, err := testReq(app, regReqB)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, regRespB.StatusCode)
 
@@ -68,14 +68,14 @@ func TestUserAndStoreHandler_E2E(t *testing.T) {
 	// 1. GET /api/v1/users/me with User A
 	reqMe := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
 	reqMe.Header.Set("Authorization", "Bearer "+tokenA)
-	respMe, err := app.Test(reqMe)
+	respMe, err := testReq(app, reqMe)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respMe.StatusCode)
 
 	// 2. GET /api/v1/stores/me with User A
 	reqStoreMe := httptest.NewRequest(http.MethodGet, "/api/v1/stores/me", nil)
 	reqStoreMe.Header.Set("Authorization", "Bearer "+tokenA)
-	respStoreMe, err := app.Test(reqStoreMe)
+	respStoreMe, err := testReq(app, reqStoreMe)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respStoreMe.StatusCode)
 
@@ -87,7 +87,7 @@ func TestUserAndStoreHandler_E2E(t *testing.T) {
 	reqTamper := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/v1/stores/%d", storeIDA), bytes.NewReader(bodyTamper))
 	reqTamper.Header.Set("Content-Type", "application/json")
 	reqTamper.Header.Set("Authorization", "Bearer "+tokenB) // Using User B's token
-	respTamper, err := app.Test(reqTamper)
+	respTamper, err := testReq(app, reqTamper)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, respTamper.StatusCode)
 
@@ -100,13 +100,13 @@ func TestUserAndStoreHandler_E2E(t *testing.T) {
 	reqValid := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/v1/stores/%d", storeIDA), bytes.NewReader(bodyValid))
 	reqValid.Header.Set("Content-Type", "application/json")
 	reqValid.Header.Set("Authorization", "Bearer "+tokenA)
-	respValid, err := app.Test(reqValid)
+	respValid, err := testReq(app, reqValid)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respValid.StatusCode)
 
 	// 5. Public GET /api/v1/stores (no auth required)
 	reqPublic := httptest.NewRequest(http.MethodGet, "/api/v1/stores?limit=10&offset=0", nil)
-	respPublic, err := app.Test(reqPublic)
+	respPublic, err := testReq(app, reqPublic)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respPublic.StatusCode)
 

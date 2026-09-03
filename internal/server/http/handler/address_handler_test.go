@@ -32,7 +32,7 @@ func TestAddressHandler_E2E(t *testing.T) {
 	bodyA, _ := json.Marshal(regPayloadA)
 	regReqA := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(bodyA))
 	regReqA.Header.Set("Content-Type", "application/json")
-	regRespA, err := app.Test(regReqA)
+	regRespA, err := testReq(app, regReqA)
 	require.NoError(t, err)
 
 	var resA struct {
@@ -53,7 +53,7 @@ func TestAddressHandler_E2E(t *testing.T) {
 	bodyB, _ := json.Marshal(regPayloadB)
 	regReqB := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(bodyB))
 	regReqB.Header.Set("Content-Type", "application/json")
-	regRespB, err := app.Test(regReqB)
+	regRespB, err := testReq(app, regReqB)
 	require.NoError(t, err)
 
 	var resB struct {
@@ -83,7 +83,7 @@ func TestAddressHandler_E2E(t *testing.T) {
 	reqCreate.Header.Set("Content-Type", "application/json")
 	reqCreate.Header.Set("Authorization", "Bearer "+tokenA)
 
-	respCreate, err := app.Test(reqCreate)
+	respCreate, err := testReq(app, reqCreate)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, respCreate.StatusCode)
 
@@ -96,28 +96,28 @@ func TestAddressHandler_E2E(t *testing.T) {
 	// 4. User A gets personal addresses
 	reqList := httptest.NewRequest(http.MethodGet, "/api/v1/addresses?limit=10&offset=0", nil)
 	reqList.Header.Set("Authorization", "Bearer "+tokenA)
-	respList, err := app.Test(reqList)
+	respList, err := testReq(app, reqList)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respList.StatusCode)
 
 	// 5. User B tries to view User A's address -> MUST return 404 Not Found!
 	reqTamperGet := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/addresses/%d", addrID), nil)
 	reqTamperGet.Header.Set("Authorization", "Bearer "+tokenB)
-	respTamperGet, err := app.Test(reqTamperGet)
+	respTamperGet, err := testReq(app, reqTamperGet)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, respTamperGet.StatusCode)
 
 	// 6. User B tries to delete User A's address -> MUST return 404 Not Found!
 	reqTamperDel := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/v1/addresses/%d", addrID), nil)
 	reqTamperDel.Header.Set("Authorization", "Bearer "+tokenB)
-	respTamperDel, err := app.Test(reqTamperDel)
+	respTamperDel, err := testReq(app, reqTamperDel)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, respTamperDel.StatusCode)
 
 	// 7. User A legitimately deletes own address -> MUST return 200 OK
 	reqDel := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/v1/addresses/%d", addrID), nil)
 	reqDel.Header.Set("Authorization", "Bearer "+tokenA)
-	respDel, err := app.Test(reqDel)
+	respDel, err := testReq(app, reqDel)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respDel.StatusCode)
 
