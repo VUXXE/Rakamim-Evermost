@@ -1,4 +1,4 @@
-package handler_test
+package e2e
 
 import (
 	"bytes"
