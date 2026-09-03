@@ -18,7 +18,7 @@ Aplikasi ini mencakup fitur lengkap mulai dari Autentikasi, Pembuatan Toko Otoma
 - [Database Schema (ERD)](#database-schema-erd)
 - [Testing](#testing)
 - [API Endpoints](#api-endpoints)
-- [Cara Menjalankan](#cara-menjalankan)
+- [Build & Run Locally](#️-build-and-run-locally)
 - [Dokumentasi Lengkap](#dokumentasi-lengkap)
 
 ---
@@ -319,45 +319,107 @@ Seluruh endpoint terpusat pada base path `/api/v1`:
 
 ---
 
-## Cara Menjalankan
+## ⚙️ Build and Run Locally
 
-### 1. Setup Database
-Pastikan layanan Docker atau MySQL aktif. Salin konfigurasi environment:
+Ikuti panduan langkah demi langkah berikut untuk mengompilasi dan menjalankan backend service di lingkungan lokal Anda:
+
+### 1. Prasyarat Sistem (Prerequisites)
+Sebelum memulai, pastikan perangkat lokal Anda telah memenuhi persyaratan berikut:
+- **Go (Golang)**: Versi `1.25+` (`go version`)
+- **Docker & Docker Compose**: Untuk menjalankan instance database MySQL 8.0
+- **Git**: Untuk kloning repositori dan version control
+
+### 2. Kloning Repositori & Masuk ke Folder Proyek
+```bash
+git clone https://github.com/VUXXE/Rakamim-Evermost.git
+cd Rakamim-Evermost
+```
+
+### 3. Konfigurasi Environment Variables
+Salin template konfigurasi `.env.example` menjadi `.env`:
 ```bash
 cp .env.example .env
 ```
 
-Jalankan MySQL 8.0 melalui Docker Compose:
+Contoh konfigurasi standar pada `.env`:
+```ini
+APP_NAME=Evermos-Ecommerce-API
+APP_PORT=8080
+APP_ENV=development
+
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=password
+DB_NAME=evermos
+
+JWT_SECRET=super_secret_jwt_key_evermos_2026_safe_and_long!
+JWT_EXP_HOURS=72
+```
+
+### 4. Setup Database MySQL (Docker Compose)
+Jalankan layanan MySQL 8.0 secara otomatis di background:
 ```bash
 docker compose up -d
 ```
+> [!NOTE]
+> Seluruh tabel basis data (`users`, `stores`, `addresses`, `categories`, `products`, `transactions`, `product_logs`) akan otomatis dibuat oleh **GORM AutoMigrate** saat aplikasi pertama kali dijalankan.
 
-### 2. Jalankan Server
+### 5. Unduh & Sinkronisasi Dependensi Go
 ```bash
-go run app/main.go
+go mod download
+go mod tidy
 ```
-*Server akan berjalan di port `:8080`.*
 
-Atau jalankan binary produksi yang sudah terkompilasi:
+### 6. Menjalankan Aplikasi (Development Mode)
+Untuk menjalankan aplikasi secara langsung dari kode sumber:
 ```bash
+go run ./app/main.go
+```
+*Server aktif dan melayani request HTTP pada: `http://localhost:8080`.*
+
+### 7. Mengompilasi Binary Produksi (Build Standalone Binary)
+Untuk mengompilasi backend menjadi single executable binary mandiri:
+```bash
+# Kompilasi kode Go ke dalam folder bin/
+go build -o bin/evermos-api ./app/main.go
+
+# Berikan izin eksekusi & jalankan binary
+chmod +x bin/evermos-api
 ./bin/evermos-api
 ```
 
-### 3. Eksplorasi API lewat Swagger UI
-Buka browser pada alamat:
-👉 **[http://localhost:8080/swagger](http://localhost:8080/swagger)** (atau [http://localhost:8080/docs](http://localhost:8080/docs))
+### 8. Memverifikasi Kesehatan Server (Health Check)
+Verifikasi bahwa server berjalan optimal dengan memeriksa endpoint health:
+```bash
+curl -i http://localhost:8080/api/v1/health
+```
+Contoh respon HTTP 200 OK:
+```json
+{
+  "code": 200,
+  "message": "server is healthy and running",
+  "data": {
+    "status": "UP"
+  }
+}
+```
 
-1. Lakukan registrasi atau login pada endpoint `POST /api/v1/auth/login`.
-2. Salin token JWT yang dihasilkan.
-3. Klik tombol hijau **Authorize 🔓** di pojok kanan atas Swagger UI.
-4. Masukkan token dengan format: `Bearer {TOKEN}`.
-5. Jalankan pengetesan endpoint terproteksi secara interaktif langsung dari browser!
+### 9. Eksplorasi API via Swagger UI (Browser)
+Buka browser dan akses antarmuka Swagger UI interaktif:
+👉 **[http://localhost:8080/swagger](http://localhost:8080/swagger)** (atau `http://localhost:8080/docs`)
 
-### 4. Eksplorasi API lewat Postman Collection
-Import file **`Evermos_API.postman_collection.json`** ke dalam Postman:
-- Seluruh endpoint sudah dikelompokkan dalam 8 modul rapi.
-- Dilengkapi dengan dokumentasi lengkap berbahasa Indonesia pada tab **Docs / Documentation** di Postman.
-- Variabel lingkungan terkonfigurasi otomatis: `{{base_url}}`, `{{token}}`, dan `{{admin_token}}`.
+1. Eksekusi endpoint `POST /api/v1/auth/login` (atau `register`) untuk memperoleh token JWT.
+2. Klik tombol hijau **Authorize 🔓** di pojok kanan atas Swagger UI.
+3. Masukkan token dengan format: `Bearer {TOKEN}`.
+4. Anda dapat menguji seluruh endpoint langsung dari browser!
+
+### 10. Eksplorasi API via Postman Collection
+Import file koleksi Postman yang telah disediakan:
+- File koleksi: **`Evermos_API.postman_collection.json`**
+- Buka Postman -> Klik **Import** -> Pilih file tersebut.
+- Sudah terstruktur dalam 9 modul dengan dokumentasi lengkap berbahasa Indonesia pada tab **Docs / Documentation**.
+- Variabel lingkungan `{{base_url}}`, `{{token}}`, dan `{{admin_token}}` telah terkonfigurasi otomatis.
 
 ---
 
