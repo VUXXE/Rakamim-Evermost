@@ -15,6 +15,7 @@ type Container struct {
 	StoreRepo    repository.StoreRepository
 	AddressRepo  repository.AddressRepository
 	CategoryRepo repository.CategoryRepository
+	ProductRepo  repository.ProductRepository
 
 	// UseCases
 	AuthUseCase     usecase.AuthUseCase
@@ -22,6 +23,7 @@ type Container struct {
 	StoreUseCase    usecase.StoreUseCase
 	AddressUseCase  usecase.AddressUseCase
 	CategoryUseCase usecase.CategoryUseCase
+	ProductUseCase  usecase.ProductUseCase
 
 	// Handlers
 	AuthHandler     *handler.AuthHandler
@@ -29,6 +31,7 @@ type Container struct {
 	StoreHandler    *handler.StoreHandler
 	AddressHandler  *handler.AddressHandler
 	CategoryHandler *handler.CategoryHandler
+	ProductHandler  *handler.ProductHandler
 }
 
 func SetupContainer(db *gorm.DB) *Container {
@@ -37,6 +40,7 @@ func SetupContainer(db *gorm.DB) *Container {
 	storeRepo := repository.NewStoreRepository(db)
 	addressRepo := repository.NewAddressRepository(db)
 	categoryRepo := repository.NewCategoryRepository(db)
+	productRepo := repository.NewProductRepository(db)
 
 	// UseCases
 	authUseCase := usecase.NewAuthUseCase(db, userRepo, storeRepo)
@@ -44,6 +48,7 @@ func SetupContainer(db *gorm.DB) *Container {
 	storeUseCase := usecase.NewStoreUseCase(storeRepo)
 	addressUseCase := usecase.NewAddressUseCase(db, addressRepo)
 	categoryUseCase := usecase.NewCategoryUseCase(categoryRepo)
+	productUseCase := usecase.NewProductUseCase(productRepo, storeRepo, categoryRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authUseCase)
@@ -51,6 +56,7 @@ func SetupContainer(db *gorm.DB) *Container {
 	storeHandler := handler.NewStoreHandler(storeUseCase)
 	addressHandler := handler.NewAddressHandler(addressUseCase)
 	categoryHandler := handler.NewCategoryHandler(categoryUseCase)
+	productHandler := handler.NewProductHandler(productUseCase)
 
 	return &Container{
 		DB:              db,
@@ -58,15 +64,18 @@ func SetupContainer(db *gorm.DB) *Container {
 		StoreRepo:       storeRepo,
 		AddressRepo:     addressRepo,
 		CategoryRepo:    categoryRepo,
+		ProductRepo:     productRepo,
 		AuthUseCase:     authUseCase,
 		UserUseCase:     userUseCase,
 		StoreUseCase:    storeUseCase,
 		AddressUseCase:  addressUseCase,
 		CategoryUseCase: categoryUseCase,
+		ProductUseCase:  productUseCase,
 		AuthHandler:     authHandler,
 		UserHandler:     userHandler,
 		StoreHandler:    storeHandler,
 		AddressHandler:  addressHandler,
 		CategoryHandler: categoryHandler,
+		ProductHandler:  productHandler,
 	}
 }

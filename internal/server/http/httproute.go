@@ -94,4 +94,19 @@ func SetupRoutes(cfg RouterConfig) {
 		categories.Get("/", c.CategoryHandler.GetAllCategories)
 		categories.Get("/:id", c.CategoryHandler.GetCategoryByID)
 	}
+
+	// Product Endpoints
+	if c.ProductHandler != nil {
+		products := api.Group("/products")
+
+		// Protected product management routes
+		products.Get("/me", middleware.JWTMiddleware(), c.ProductHandler.GetMyProducts)
+		products.Post("/", middleware.JWTMiddleware(), c.ProductHandler.CreateProduct)
+		products.Patch("/:id", middleware.JWTMiddleware(), c.ProductHandler.UpdateProduct)
+		products.Delete("/:id", middleware.JWTMiddleware(), c.ProductHandler.DeleteProduct)
+
+		// Public product browsing and search routes
+		products.Get("/", c.ProductHandler.GetAllProducts)
+		products.Get("/:id", c.ProductHandler.GetProductByID)
+	}
 }
